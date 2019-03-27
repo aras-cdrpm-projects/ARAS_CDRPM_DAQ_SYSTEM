@@ -77,6 +77,7 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim4;
 
 UART_HandleTypeDef huart5;
 UART_HandleTypeDef huart3;
@@ -98,6 +99,7 @@ static void MX_TIM1_Init(void);
 static void MX_CAN1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_GFXSIMULATOR_Init(void);
+static void MX_TIM4_Init(void);
 /* USER CODE BEGIN PFP */
 struct udp_pcb *UDP;
 ip_addr_t Remote_IP, Local_IP;
@@ -151,6 +153,9 @@ HAL_StatusTypeDef canret;
 volatile char str[32];
 volatile int SENSOtgRX_COUNTER=0;
 volatile int SENSOR_RX_FLAG=0;
+extern volatile int nob_encoder_index;
+int32_t nob_encoder_read(void);
+
 void CAN_CARDS_INIT(void){
 	HAL_GPIO_WritePin(CS1_GPIO_Port,CS1_Pin,GPIO_PIN_SET);
 	HAL_GPIO_WritePin(CS2_GPIO_Port,CS2_Pin,GPIO_PIN_SET);
@@ -324,19 +329,20 @@ int main(void)
   MX_CAN1_Init();
   MX_SPI1_Init();
   MX_GFXSIMULATOR_Init();
+  MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim1);
+	HAL_TIM_Base_Start_IT(&htim4);
 	CAN_CARDS_INIT();
 	HAL_GPIO_WritePin(GPIOD, RPi_PW_Pin, GPIO_PIN_RESET);
+	nob_encoder_index=0;	//Reset the encoder index in case an unwanted interrupt occures.
 	IP_ADDR4(&Local_IP, 192, 168, 50, 100);
 	IP_ADDR4(&Remote_IP, 192, 168, 50, 110);
-	
 	UDP=udp_new();
 	udp_bind(UDP, IP_ADDR_ANY, 5500);
 	Transmit_Pbuf=pbuf_alloc(PBUF_TRANSPORT, sizeof(outPacket.Data), PBUF_RAM);
 	spi_stack_init(&hspi1);
   /* USER CODE END 2 */
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 	HAL_Delay(500);
@@ -353,7 +359,6 @@ int main(void)
 		pos[1]=(float)keys[1];
 		pos[2]=(float)keys[2];
 		IMP_Write(pos,q);
-
 		HAL_Delay(1);
 		//
 		/*
@@ -645,6 +650,55 @@ static void MX_TIM1_Init(void)
   /* USER CODE BEGIN TIM1_Init 2 */
 
   /* USER CODE END TIM1_Init 2 */
+
+}
+
+/**
+  * @brief TIM4 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM4_Init(void)
+{
+
+  /* USER CODE BEGIN TIM4_Init 0 */
+
+  /* USER CODE END TIM4_Init 0 */
+
+  TIM_Encoder_InitTypeDef sConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM4_Init 1 */
+
+  /* USER CODE END TIM4_Init 1 */
+  htim4.Instance = TIM4;
+  htim4.Init.Prescaler = 0;
+  htim4.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim4.Init.Period = 9999;
+  htim4.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim4.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  sConfig.EncoderMode = TIM_ENCODERMODE_TI12;
+  sConfig.IC1Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC1Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC1Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC1Filter = 0;
+  sConfig.IC2Polarity = TIM_ICPOLARITY_RISING;
+  sConfig.IC2Selection = TIM_ICSELECTION_DIRECTTI;
+  sConfig.IC2Prescaler = TIM_ICPSC_DIV1;
+  sConfig.IC2Filter = 0;
+  if (HAL_TIM_Encoder_Init(&htim4, &sConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim4, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM4_Init 2 */
+
+  /* USER CODE END TIM4_Init 2 */
 
 }
 

@@ -75,8 +75,10 @@ int RPI_SYNC=0;
 extern CAN_HandleTypeDef hcan1;
 extern SPI_HandleTypeDef hspi1;
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim4;
 /* USER CODE BEGIN EV */
 volatile int UDP_TFLAG=0;
+volatile int32_t nob_encoder_index=0;
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -224,7 +226,7 @@ void EXTI4_IRQHandler(void)
 	spi_stack_CS_Mng(&hspi1);
 	__HAL_GPIO_EXTI_CLEAR_IT(GPIO_PIN_4);
   /* USER CODE END EXTI4_IRQn 0 */
-  //HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
+  HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
   /* USER CODE BEGIN EXTI4_IRQn 1 */
 
   /* USER CODE END EXTI4_IRQn 1 */
@@ -291,6 +293,27 @@ void TIM1_UP_TIM10_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles TIM4 global interrupt.
+  */
+void TIM4_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM4_IRQn 0 */
+		if(htim4.Instance->CNT==0)
+		{
+			nob_encoder_index++;
+		}
+		else
+		{
+			nob_encoder_index--;
+		}
+  /* USER CODE END TIM4_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim4);
+  /* USER CODE BEGIN TIM4_IRQn 1 */
+
+  /* USER CODE END TIM4_IRQn 1 */
+}
+
+/**
   * @brief This function handles SPI1 global interrupt.
   */
 void SPI1_IRQHandler(void)
@@ -298,7 +321,7 @@ void SPI1_IRQHandler(void)
   /* USER CODE BEGIN SPI1_IRQn 0 */
 	spi_stack_stateMacine(&hspi1);
   /* USER CODE END SPI1_IRQn 0 */
-  //HAL_SPI_IRQHandler(&hspi1);
+  HAL_SPI_IRQHandler(&hspi1);
   /* USER CODE BEGIN SPI1_IRQn 1 */
 
   /* USER CODE END SPI1_IRQn 1 */
@@ -319,6 +342,9 @@ void EXTI15_10_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-
+int32_t nob_encoder_read(void)
+{
+	return nob_encoder_index*10000+htim4.Instance->CNT;
+}
 /* USER CODE END 1 */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

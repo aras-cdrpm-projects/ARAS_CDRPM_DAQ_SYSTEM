@@ -37,9 +37,7 @@ mb_starter\stm32f7xx_it.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim
 mb_starter\stm32f7xx_it.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim_ex.h
 mb_starter\stm32f7xx_it.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart.h
 mb_starter\stm32f7xx_it.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart_ex.h
-mb_starter\stm32f7xx_it.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pcd.h
-mb_starter\stm32f7xx_it.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h
-mb_starter\stm32f7xx_it.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pcd_ex.h
 mb_starter\stm32f7xx_it.o: ../Inc/stm32f7xx_it.h
 mb_starter\stm32f7xx_it.o: ..\MDK-ARM\spi_stack.h
 mb_starter\stm32f7xx_it.o: D:\Programs Install\keil\ARM\ARMCC\Bin\..\include\string.h
+mb_starter\stm32f7xx_it.o: ..\MDK-ARM\power_manager.h

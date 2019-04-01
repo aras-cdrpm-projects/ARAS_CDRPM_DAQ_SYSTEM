@@ -70,6 +70,8 @@ extern "C" {
 
 /* USER CODE END EM */
 
+void HAL_TIM_MspPostInit(TIM_HandleTypeDef *htim);
+
 /* Exported functions prototypes ---------------------------------------------*/
 void Error_Handler(void);
 
@@ -83,6 +85,10 @@ void Error_Handler(void);
 #define USER_Btn_EXTI_IRQn EXTI15_10_IRQn
 #define CS4_Pin GPIO_PIN_4
 #define CS4_GPIO_Port GPIOF
+#define RPI_PW_STAT_Pin GPIO_PIN_7
+#define RPI_PW_STAT_GPIO_Port GPIOF
+#define Power_Key_Pin GPIO_PIN_9
+#define Power_Key_GPIO_Port GPIOF
 #define MCO_Pin GPIO_PIN_0
 #define MCO_GPIO_Port GPIOH
 #define RMII_MDC_Pin GPIO_PIN_1
@@ -105,6 +111,8 @@ void Error_Handler(void);
 #define CS2_GPIO_Port GPIOF
 #define CS1_Pin GPIO_PIN_10
 #define CS1_GPIO_Port GPIOE
+#define LED2_PWM_Pin GPIO_PIN_11
+#define LED2_PWM_GPIO_Port GPIOB
 #define RMII_TXD1_Pin GPIO_PIN_13
 #define RMII_TXD1_GPIO_Port GPIOB
 #define LD3_Pin GPIO_PIN_14
@@ -151,14 +159,20 @@ void Error_Handler(void);
 #define TCK_GPIO_Port GPIOA
 #define RPi_PW_Pin GPIO_PIN_6
 #define RPi_PW_GPIO_Port GPIOD
+#define RPI_SPW_Pin GPIO_PIN_7
+#define RPI_SPW_GPIO_Port GPIOD
 #define RMII_TX_EN_Pin GPIO_PIN_11
 #define RMII_TX_EN_GPIO_Port GPIOG
 #define RMII_TXD0_Pin GPIO_PIN_13
 #define RMII_TXD0_GPIO_Port GPIOG
 #define SW0_Pin GPIO_PIN_3
 #define SW0_GPIO_Port GPIOB
+#define LED1_PWM_Pin GPIO_PIN_4
+#define LED1_PWM_GPIO_Port GPIOB
 #define LD2_Pin GPIO_PIN_7
 #define LD2_GPIO_Port GPIOB
+#define BL_EN_Pin GPIO_PIN_8
+#define BL_EN_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */

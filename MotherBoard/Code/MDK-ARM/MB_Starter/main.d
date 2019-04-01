@@ -37,9 +37,6 @@ mb_starter\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim.h
 mb_starter\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim_ex.h
 mb_starter\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart.h
 mb_starter\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart_ex.h
-mb_starter\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pcd.h
-mb_starter\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h
-mb_starter\main.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pcd_ex.h
 mb_starter\main.o: ../Inc/lwip.h
 mb_starter\main.o: ../Middlewares/Third_Party/LwIP/src/include/lwip/opt.h
 mb_starter\main.o: ../Inc/lwipopts.h
@@ -83,3 +80,4 @@ mb_starter\main.o: ../Middlewares/Third_Party/LwIP/src/include/lwip/ip6.h
 mb_starter\main.o: ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/ip.h
 mb_starter\main.o: ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/udp.h
 mb_starter\main.o: ..\MDK-ARM\spi_stack.h
+mb_starter\main.o: ..\MDK-ARM\power_manager.h

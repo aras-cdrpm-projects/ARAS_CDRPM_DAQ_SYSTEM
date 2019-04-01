@@ -1,6 +1,7 @@
 --cpu Cortex-M7.fp.sp
 "mb_starter\startup_stm32f746xx.o"
 "mb_starter\spi_stack.o"
+"mb_starter\power_manager.o"
 "mb_starter\main.o"
 "mb_starter\lwip.o"
 "mb_starter\ethernetif.o"
@@ -14,9 +15,6 @@
 "mb_starter\stm32f7xx_hal_tim.o"
 "mb_starter\stm32f7xx_hal_tim_ex.o"
 "mb_starter\stm32f7xx_hal_uart.o"
-"mb_starter\stm32f7xx_hal_pcd.o"
-"mb_starter\stm32f7xx_hal_pcd_ex.o"
-"mb_starter\stm32f7xx_ll_usb.o"
 "mb_starter\stm32f7xx_hal_rcc.o"
 "mb_starter\stm32f7xx_hal_rcc_ex.o"
 "mb_starter\stm32f7xx_hal_flash.o"

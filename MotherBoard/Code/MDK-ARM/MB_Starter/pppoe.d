@@ -40,9 +40,6 @@ mb_starter\pppoe.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim.h
 mb_starter\pppoe.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim_ex.h
 mb_starter\pppoe.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart.h
 mb_starter\pppoe.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart_ex.h
-mb_starter\pppoe.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pcd.h
-mb_starter\pppoe.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_ll_usb.h
-mb_starter\pppoe.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_pcd_ex.h
 mb_starter\pppoe.o: ../Middlewares/Third_Party/LwIP/src/include/lwip/debug.h
 mb_starter\pppoe.o: ../Middlewares/Third_Party/LwIP/src/include/lwip/arch.h
 mb_starter\pppoe.o: ../Middlewares/Third_Party/LwIP/system/arch/cc.h

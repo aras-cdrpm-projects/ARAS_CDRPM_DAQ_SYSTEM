@@ -39,6 +39,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "spi_stack.h"
+#include "power_manager.h"
 /* USER CODE END Includes */
   
 /* Private typedef -----------------------------------------------------------*/
@@ -69,6 +70,7 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 int RPI_SYNC=0;
+
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -284,6 +286,7 @@ void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
 	HAL_GPIO_WritePin(GPIOG, TEST_Pin, !HAL_GPIO_ReadPin(GPIOG, TEST_Pin));
+	led_interrupt_rutine();
 	UDP_TFLAG=1;
   /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
   HAL_TIM_IRQHandler(&htim1);

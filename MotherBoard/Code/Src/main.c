@@ -357,7 +357,7 @@ int main(void)
 		readKeys(keys);
 		pos[0]=(float)keys[0];
 		pos[1]=(float)keys[1];
-		pos[2]=(float)keys[2];
+		pos[2]=(float)nob_encoder_read();
 		IMP_Write(pos,q);
 		HAL_Delay(1);
 		//

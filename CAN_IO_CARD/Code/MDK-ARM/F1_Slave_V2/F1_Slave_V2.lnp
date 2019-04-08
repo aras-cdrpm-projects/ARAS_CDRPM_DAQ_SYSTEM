@@ -1,0 +1,25 @@
+--cpu Cortex-M3
+"f1_slave_v2\startup_stm32f103xb.o"
+"f1_slave_v2\main.o"
+"f1_slave_v2\stm32f1xx_it.o"
+"f1_slave_v2\stm32f1xx_hal_msp.o"
+"f1_slave_v2\stm32f1xx_hal_gpio_ex.o"
+"f1_slave_v2\stm32f1xx_hal_can.o"
+"f1_slave_v2\stm32f1xx_hal_spi.o"
+"f1_slave_v2\stm32f1xx_hal_spi_ex.o"
+"f1_slave_v2\stm32f1xx_hal_tim.o"
+"f1_slave_v2\stm32f1xx_hal_tim_ex.o"
+"f1_slave_v2\stm32f1xx_hal.o"
+"f1_slave_v2\stm32f1xx_hal_rcc.o"
+"f1_slave_v2\stm32f1xx_hal_rcc_ex.o"
+"f1_slave_v2\stm32f1xx_hal_gpio.o"
+"f1_slave_v2\stm32f1xx_hal_dma.o"
+"f1_slave_v2\stm32f1xx_hal_cortex.o"
+"f1_slave_v2\stm32f1xx_hal_pwr.o"
+"f1_slave_v2\stm32f1xx_hal_flash.o"
+"f1_slave_v2\stm32f1xx_hal_flash_ex.o"
+"f1_slave_v2\system_stm32f1xx.o"
+--library_type=microlib --strict --scatter "F1_Slave_V2\F1_Slave_V2.sct"
+--summary_stderr --info summarysizes --map --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list "F1_Slave_V2.map" -o F1_Slave_V2\F1_Slave_V2.axf

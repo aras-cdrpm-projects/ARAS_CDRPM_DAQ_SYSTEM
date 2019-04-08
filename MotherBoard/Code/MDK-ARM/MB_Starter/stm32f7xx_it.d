@@ -41,3 +41,4 @@ mb_starter\stm32f7xx_it.o: ../Inc/stm32f7xx_it.h
 mb_starter\stm32f7xx_it.o: ..\MDK-ARM\spi_stack.h
 mb_starter\stm32f7xx_it.o: D:\Programs Install\keil\ARM\ARMCC\Bin\..\include\string.h
 mb_starter\stm32f7xx_it.o: ..\MDK-ARM\power_manager.h
+mb_starter\stm32f7xx_it.o: ..\MDK-ARM\CAN_CARD.h

@@ -40,6 +40,7 @@
 /* USER CODE BEGIN Includes */
 #include "spi_stack.h"
 #include "power_manager.h"
+#include "CAN_CARD.h"
 /* USER CODE END Includes */
   
 /* Private typedef -----------------------------------------------------------*/
@@ -285,8 +286,9 @@ void EXTI9_5_IRQHandler(void)
 void TIM1_UP_TIM10_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM1_UP_TIM10_IRQn 0 */
-	HAL_GPIO_WritePin(GPIOG, TEST_Pin, !HAL_GPIO_ReadPin(GPIOG, TEST_Pin));
+	//Time Base generator. An interrupt is generated every 1ms
 	led_interrupt_rutine();
+	ccuHeartBeat(); //Write to the link active register each 500 ms
 	UDP_TFLAG=1;
   /* USER CODE END TIM1_UP_TIM10_IRQn 0 */
   HAL_TIM_IRQHandler(&htim1);

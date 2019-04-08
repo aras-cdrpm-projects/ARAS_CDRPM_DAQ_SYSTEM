@@ -16,5 +16,8 @@ void CCU_Write(uint8_t Address,uint8_t *data,int len , int CCU_CS);
 void dacSend(int32_t dac[4]);
 void CCU_Read(uint8_t Address,uint8_t *data,int len , int CCU_CS);
 void CC_Interrupt_rutine(uint16_t GPIO_Pin);
+void sensorStartConversion(void);
+void ccuHeartBeat(void);
 
 #endif
+

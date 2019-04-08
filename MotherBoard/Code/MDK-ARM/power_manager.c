@@ -13,11 +13,16 @@ volatile float standby_led_val=0;
 
 void led_interrupt_rutine(void)
 {
-	power_led_pwm_val=0.99*power_led_pwm_val+0.01*POWER_LED_PWM;
-	standby_led_val=0.99*standby_led_val+0.01*STANDBY_LED_PWM;
-	TIM2->CCR4=(uint16_t)(power_led_pwm_val);
-	TIM3->CCR1=(uint16_t)(standby_led_val);
-	HAL_GPIO_WritePin(GPIOD, RPi_PW_Pin, GPIO_PIN_SET);
+	static int cnt=0;
+	cnt++;
+	if(cnt>9)
+	{
+		cnt=0;
+		power_led_pwm_val=0.9*power_led_pwm_val+0.1*POWER_LED_PWM;
+		standby_led_val=0.9*standby_led_val+0.1*STANDBY_LED_PWM;
+		TIM2->CCR4=(uint16_t)(power_led_pwm_val);
+		TIM3->CCR1=(uint16_t)(standby_led_val);
+	}
 }
 void powerManager_init(void)
 {
@@ -233,3 +238,4 @@ enum {POWER_ON , STANDBY , POWER_OFF , SHUTING_DOWN};
 	  
 		}
 /* USER CODE END 0 */
+		

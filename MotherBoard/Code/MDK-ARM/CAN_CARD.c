@@ -4,6 +4,7 @@
 #define STATUS_ADDRESS 0
 #define RPU_SENSOR_ADDRESS 1
 #define DAC_ADDRESS 9
+#define MASTER_TO_SLAVE_HEART_BEAT_ADDRESS 100
 #define RPU_CONVERT_FAIL_STATUS 1
 #define RPU_CONVERT_SUCCESS_STATUS 2
 
@@ -166,3 +167,27 @@ void CC_Interrupt_rutine(uint16_t GPIO_Pin)
 	if(SENSOR_RX_COUNTER==3)
 		SENSOR_RX_FLAG=1;
 }
+
+void sensorStartConversion(void)
+{
+	SENSOR_RX_COUNTER=0;
+	SENSOR_RX_FLAG=0;
+	HAL_GPIO_WritePin(GPIOG, CAN_SYNC1_Pin, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOG, CAN_SYNC1_Pin, GPIO_PIN_RESET);
+}
+void ccuHeartBeat(void)
+{
+	uint8_t data[2]={0x55,0x55};
+	static uint16_t cnt=0;
+	cnt++;
+	if(cnt>500)
+	{
+		cnt=0;
+		CCU_Write(MASTER_TO_SLAVE_HEART_BEAT_ADDRESS,data,1,1);
+		CCU_Write(MASTER_TO_SLAVE_HEART_BEAT_ADDRESS,data,1,2);
+		CCU_Write(MASTER_TO_SLAVE_HEART_BEAT_ADDRESS,data,1,3);
+		CCU_Write(MASTER_TO_SLAVE_HEART_BEAT_ADDRESS,data,1,4);
+
+	}
+}
+

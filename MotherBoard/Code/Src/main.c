@@ -49,7 +49,6 @@
 #include "spi_stack.h"
 #include "power_manager.h"
 #include "CAN_CARD.h"
-
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -153,9 +152,6 @@ volatile int SENSOtgRX_COUNTER=0;
 extern volatile int nob_encoder_index;
 int32_t nob_encoder_read(void);
 
-
-
-
 /////////////////RPI CODE STARTS HERE
 
 void RPI_DATA_LOAD(void){
@@ -169,13 +165,6 @@ void setStatusReg(int status)
 }
 /////////////////RPI CODE ENDS HERE
 
-void sensorStartConversion(void)
-{
-	SENSOR_RX_COUNTER=0;
-	SENSOR_RX_FLAG=0;
-	HAL_GPIO_WritePin(GPIOG, CAN_SYNC1_Pin, GPIO_PIN_SET);
-	HAL_GPIO_WritePin(GPIOG, CAN_SYNC1_Pin, GPIO_PIN_RESET);
-}
 
 
 
@@ -266,7 +255,6 @@ int main(void)
 		pos[1]=(float)keys[1];
 		pos[2]=(float)nob_encoder_read();
 		IMP_Write(pos,q);
-		HAL_Delay(1);
 		//
 		/*
 			sprintf(str,"\n\n%x ,\t %x\n\r",sensor_data[0].Data.analog,sensor_data[0].Data.encoder);
@@ -283,8 +271,8 @@ int main(void)
 			{
 			ledStateMachine();
 			poweSwitchStateMachine();
-			//dacSend(vals);
-			//sensorStartConversion();
+			dacSend(vals);
+			sensorStartConversion();
 			//while(SENSOR_RX_FLAG==0);
 			UDP_TFLAG=0;
 			//pbuf_take(Transmit_Pbuf, outPacket.buff, sizeof(outPacket.buff));
@@ -533,9 +521,9 @@ static void MX_TIM1_Init(void)
 
   /* USER CODE END TIM1_Init 1 */
   htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 143;
+  htim1.Init.Prescaler = 999;
   htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 999;
+  htim1.Init.Period = 215;
   htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim1.Init.RepetitionCounter = 0;
   htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;

@@ -424,6 +424,11 @@
               <FileType>1</FileType>
               <FilePath>../Src/stm32f7xx_hal_msp.c</FilePath>
             </File>
+            <File>
+              <FileName>CAN_CARD.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\CAN_CARD.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

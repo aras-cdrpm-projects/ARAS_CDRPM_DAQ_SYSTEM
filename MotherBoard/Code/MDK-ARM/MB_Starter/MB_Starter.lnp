@@ -7,6 +7,7 @@
 "mb_starter\ethernetif.o"
 "mb_starter\stm32f7xx_it.o"
 "mb_starter\stm32f7xx_hal_msp.o"
+"mb_starter\can_card.o"
 "mb_starter\stm32f7xx_hal_eth.o"
 "mb_starter\stm32f7xx_hal_can.o"
 "mb_starter\stm32f7xx_hal_cortex.o"

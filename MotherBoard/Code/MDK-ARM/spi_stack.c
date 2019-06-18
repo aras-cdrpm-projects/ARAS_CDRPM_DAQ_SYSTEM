@@ -3,10 +3,11 @@
 #define IMP_BASEADDRESS     0
 #define IMU_BASEADDRESS     30
 #define RPUs_BASEADDRESS    68
-#define KYES_BASEADDRESS    102
+#define KEYS_BASEADDRESS    102
 #define SLIDERS_BASEADDRESS 110
+uint8_t spi_rxBuff[128],spi_txBuff[128];
+uint8_t rxBuff[128],txBuff[128];
 
-extern volatile uint8_t spi_regs[127];
     union{
         struct
         {
@@ -56,59 +57,65 @@ volatile uint8_t R_W=0;
 extern volatile int sync1_intflag;
 void regRead(uint8_t Address, uint8_t *data, int len)
 {
-    memcpy((uint8_t *)data,(uint8_t *)&spi_regs[Address],len);
+    memcpy((uint8_t *)data,(uint8_t *)&spi_rxBuff[Address],len);
 }
-
-
 void regWrite(uint8_t Address,uint8_t *data,int len)
 {
-    memcpy((uint8_t *)&spi_regs[Address],(uint8_t *)data,len);
-
+    memcpy((uint8_t *)&spi_txBuff[Address],(uint8_t *)data,len);
 }
-void spi_stack_init(SPI_HandleTypeDef *spi){
-	spi->Instance->CR2|=(1<<6); //Enable the interrupt 
-	memset((uint8_t*)spi_regs,0x00,sizeof(spi_regs));
-}
+void spi_stack_init(void){
+	memset((uint8_t*)spi_rxBuff,0x00,sizeof(spi_rxBuff));
+	memset((uint8_t*)spi_txBuff,0x00,sizeof(spi_rxBuff));
+	//DMA Config, DMA2 Stream 0 is for SPI_RX and DMA2 Stream 3 is for SPI TX
+	//DAM2 Stream0 SPI_RX
+	DMA2_Stream0->CR=0;
+	DMA2_Stream0->CR|=(3<<25);//set Chanel 3
+	DMA2_Stream0->CR|=(2<<16);//Prrority
+	DMA2_Stream0->CR|=(1<<10);//mem Address incriment
+	DMA2_Stream0->CR|=(1<<4);//Transfer Complete interrupt enable
+	//DAM2 Stream0 SPI_TX
+	DMA2_Stream3->CR=0;
+	DMA2_Stream3->CR|=(3<<25);//set Chanel 3
+	DMA2_Stream3->CR|=(2<<16);//Prrority
+	DMA2_Stream3->CR|=(1<<10);//mem Address incriment
+	DMA2_Stream3->CR|=(1<<6);//Memory to pripheral transfer 
+	//Set the DMA addresses
+	DMA2_Stream0->PAR=(volatile unsigned int)&(SPI1->DR);
+	DMA2_Stream0->M0AR=(volatile unsigned int)rxBuff;
 
-void spi_stack_stateMacine(SPI_HandleTypeDef *spi)
-{
-	uint8_t data= *(uint8_t *)&(spi->Instance->DR);
-		if(spiByteCounter==0) //Is it the first Byte? If yes, Exteract the Address and RW cmd
-		{
-				address=data&0x7f;
-				R_W = (data>>7)&0x1;
-			if(R_W==1)	//If Read command is issued, the first byte of the regs should be loaded into the DR Reg to be transmitted
-				  *(uint8_t *)&(spi->Instance->DR)=spi_regs[address];
-		}else if(R_W==1)
-		{
-					*(uint8_t *)&(spi->Instance->DR)=spi_regs[address]; //If write cmd is asserted, Save the bytes following the first command and RW byte.
-		}else
-		{
-				  spi_regs[address-1]=data;
-		}
-		address++;
-		spiByteCounter++;
+	DMA2_Stream3->PAR=(unsigned int)&(SPI1->DR);
+	DMA2_Stream3->M0AR=(unsigned int)txBuff;
 }
 
-void spi_stack_CS_Mng(SPI_HandleTypeDef *spi)
-{
-	uint8_t data;
-		while(spi->Instance->SR&0x1)
-		 data= *(uint8_t *)&(spi->Instance->DR);
+void spi_stack_CS_Mng(void){
 		if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4)) //If the interrupt is generated due to a rising edge, The SPI module and the software SS signals
 																					 //Have to be set
 		{
-			spi->Instance->CR1|=(1<<8); // Set the Software controled SS Signal
-			spiByteCounter=0;						 // Reset the Byte counter
-			spi->Instance->CR1&=~(1<<6);// Disable the SPI Module
+			DMA2_Stream0->CR&=~(1<<0);
+			DMA2_Stream3->CR&=~(1<<0);
+			DMA2->LIFCR=0xffffffff; //Clear All DMA Flags
+			SPI1->CR1|=(1<<8); //SET the SW NSS Signal
+			SPI1->CR1&=~(1<<6);// Enable The SPI Module
+			SPI1->CR2&=~(1<<0); //Disable the DMA FIFO in the SPI Module 
+		  SPI1->CR2&=~(1<<1);
 		}else{
-		  spiByteCounter=0;
-			spi->Instance->CR1&=~(1<<8);//Assert the NSS signal(This causes the MOSI Pin to be set to output mode instead of being a Tri-state signal)
-			spi->Instance->CR1|=(1<<6); //Enable the SPI Module
-
+			memcpy((uint8_t*)txBuff,(uint8_t *)spi_txBuff,sizeof(spi_txBuff));
+			SPI1->CR2|=(1<<0);
+		  SPI1->CR2|=(1<<1);
+			DMA2_Stream0->NDTR=128;
+		  DMA2_Stream3->NDTR=128;
+			DMA2->LIFCR=0xffffffff; //Clear all Flags
+			DMA2_Stream0->CR|=(1<<0);
+			DMA2_Stream3->CR|=(1<<0);
+			SPI1->CR1&=~(1<<8); //Restet the SW NSS Signal
+			SPI1->CR1|=(1<<6);// Enable The SPI Module
 		}
 }
 
+
+void spi_dma_rx_complete_rutine(void){
+	memcpy((uint8_t*)spi_rxBuff,(uint8_t *)rxBuff,sizeof(rxBuff));
+}
 void IMP_Write(float *pos, float *q)
 {
     IMP.Data.Pos[0]=pos[0];
@@ -124,43 +131,45 @@ void IMP_Write(float *pos, float *q)
 
 void IMU_Write(int32_t *a, int32_t *g, int32_t *m)
 {
-    a[0]=IMU.Data.a[0];
-    a[1]=IMU.Data.a[1];
-    a[2]=IMU.Data.a[2];
-    g[0]=IMU.Data.g[0];
-    g[1]=IMU.Data.g[1];
-    g[2]=IMU.Data.g[2];
-    m[0]=IMU.Data.m[0];
-    m[1]=IMU.Data.m[1];
-    m[2]=IMU.Data.m[2];
+    IMU.Data.a[0]=a[0];
+    IMU.Data.a[1]=a[1];
+    IMU.Data.a[2]=a[2];
+
+    IMU.Data.g[0]=g[0];
+	  IMU.Data.g[1]=g[1];
+    IMU.Data.g[2]=g[2];
+	
+    IMU.Data.m[0]=m[0];
+		IMU.Data.m[1]=m[1];
+    IMU.Data.m[2]=m[2];
    	regWrite(IMU_BASEADDRESS,IMU.buffer,sizeof(IMU.buffer)); 
 
 }
 
 void RPUs_Write(int32_t *encoders, int32_t *forces)
 {
-    encoders[0]=RPUs.Data.Enc[0];
-    encoders[1]=RPUs.Data.Enc[1];
-    encoders[2]=RPUs.Data.Enc[2];
-    encoders[3]=RPUs.Data.Enc[3];
-    forces[0]=RPUs.Data.force[0];
-    forces[1]=RPUs.Data.force[1];
-    forces[2]=RPUs.Data.force[2];
-    forces[3]=RPUs.Data.force[3];
+    RPUs.Data.Enc[0]=encoders[0];
+    RPUs.Data.Enc[1]=encoders[1];
+    RPUs.Data.Enc[2]=encoders[2];
+    RPUs.Data.Enc[3]=encoders[3];
+
+    RPUs.Data.force[0]=forces[0];
+    RPUs.Data.force[1]=forces[1];
+    RPUs.Data.force[2]=forces[2];
+    RPUs.Data.force[3]=forces[3];
    	regWrite(RPUs_BASEADDRESS,RPUs.buffer,sizeof(RPUs.buffer)); 
 
 }
 
 void readKeys(uint8_t *keys)
 {
-	memcpy((uint8_t *)KEYs.buffer,(uint8_t *)&spi_regs[KYES_BASEADDRESS],sizeof(KEYs.buffer));
+	regRead(KEYS_BASEADDRESS,KEYs.buffer,sizeof(KEYs.buffer));
 	memcpy((uint8_t *)keys,KEYs.Data.Keys,sizeof(KEYs.Data.Keys));
 }
 
 void SlidersRead(uint8_t *sliders)
 {
-
-		memcpy((uint8_t *)Sliders.buffer,(uint8_t *)&spi_regs[SLIDERS_BASEADDRESS],sizeof(Sliders.buffer));
+		regRead(SLIDERS_BASEADDRESS,Sliders.buffer,sizeof(Sliders.buffer));
 	  memcpy((uint8_t *)sliders,Sliders.Data.sliders,sizeof(Sliders.Data.sliders));
 }
 

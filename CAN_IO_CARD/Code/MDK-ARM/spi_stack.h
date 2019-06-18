@@ -2,16 +2,17 @@
 #define __SPI_STACK
 #include "string.h"
 #include "stm32f1xx_hal.h"
-extern volatile uint8_t spi_regs[127];
-
-void IMP_Write(float *pos,float *q);
-void IMU_Write(int32_t *a,int32_t *g,int32_t *m);
-void RPUs_Write(int32_t *encoders,int32_t *forces);
-void readKeys(uint8_t *keys);
-void SlidersRead(uint8_t *sliders);
-void spi_stack_init(SPI_HandleTypeDef *spi); // To be called after the spi init functions
-void spi_stack_stateMacine(SPI_HandleTypeDef *spi);// To be called in the spi interrupt rutien
-void spi_stack_CS_Mng(SPI_HandleTypeDef *spi);// To be called in the GPIO interrupt rutien
-
+#define STATUS_ADDRESS		0
+#define FORCE_ADDRESS			4
+#define ENCODER_ADDRESS		8
+#define DAC_ADDRESS				12
+#define SPI_LINK_STATUS		16
+void spi_stack_init(SPI_HandleTypeDef *spi);
+void spi_stack_CS_Mng(SPI_HandleTypeDef *spi);
+void spi_dma_rx_complete_rutine(void);
+void spi_out_shadow_update(void);
+void spi_set_register(int address,int32_t val);
+int32_t spi_get_register(int address);
+void spi_set_rx_chache_register(int address,int32_t val);
 
 #endif

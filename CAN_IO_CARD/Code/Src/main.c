@@ -44,13 +44,15 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "string.h"
-#define STATUS_ADDRESS 0
-#define RPU_SENSOR_ADDRESS 1
-#define DAC_ADDRESS 9
+#include "spi_stack.h"
 
 #define CONVERT_FAIL_STATUS 1
 #define CONVERT_SUCCESS_STATUS 0
 
+#define SPI_SYS_DBUG_MODE 0	//Set this flag to force the CAN subsytem into a simulated data exchange mode. This way we can debug the spi system in an isolated manner
+//The artificial values for the sensors in the SPI debug mode
+#define ENCODER_DBG_VAL   7
+#define FORCE_DBG_VAL			8
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -72,8 +74,12 @@
 CAN_HandleTypeDef hcan;
 
 SPI_HandleTypeDef hspi1;
+DMA_HandleTypeDef hdma_spi1_rx;
+DMA_HandleTypeDef hdma_spi1_tx;
 
 TIM_HandleTypeDef htim4;
+
+UART_HandleTypeDef huart1;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
@@ -83,9 +89,11 @@ TIM_HandleTypeDef htim4;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_CAN_Init(void);
 static void MX_TIM4_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 /* Private function prototypes -----------------------------------------------*/
 
@@ -105,7 +113,8 @@ static void MX_TIM4_Init(void);
 	volatile int RPU_CAN_READ_SENSORS_REQ=0;
 	int32_t CAN_CNVT_TIME;
 	int LED_BeatFlag=0;
-
+	int CAN_LINK_STATUS=CONVERT_FAIL_STATUS; 
+char message[32];
 	union{
 	struct{
 	int16_t angOut;
@@ -122,7 +131,6 @@ union{
 }CAN_IN_SIG_PACK;
 
 //*****************************************************************
-extern volatile uint8_t regs[128];
 char str[100];
 extern volatile int spi_tx_finish_flag, sync2_ready;
 extern int LED_OFF_DELAY;
@@ -130,28 +138,36 @@ extern int LED_ON_DELAY;
 extern int LED_WD;
 volatile int convert_done_flag=0,sync1_intflag=0;
 int32_t convert_time;
-
+//when the Value of the sensor data is received form the RPU unit, its value is stored using this function
 void reg_load_converted(void)
 {
-	union
+  int32_t encoder;
+	int32_t force;
+
+	if(SPI_SYS_DBUG_MODE)
 	{
-		struct
-		{
-			int32_t encoder;
-			int32_t force;
-		}Data;
-		uint8_t buff[8];
-	}RPU_Sendors;
-	RPU_Sendors.Data.encoder=CAN_IN_SIG_PACK.Data.enc;
-	RPU_Sendors.Data.force	=CAN_IN_SIG_PACK.Data.force;
-	memcpy((uint8_t*)&regs[RPU_SENSOR_ADDRESS],RPU_Sendors.buff,8);
+		encoder=ENCODER_DBG_VAL;
+		force	=FORCE_DBG_VAL;
+	}
+	else
+	{
+		encoder=CAN_IN_SIG_PACK.Data.enc;
+		force	=CAN_IN_SIG_PACK.Data.force;
+	}
+	//sprintf(message,"Force Measurement= %d \r\n",CAN_IN_SIG_PACK.Data.force);
+	//HAL_UART_Transmit(&huart1,message,sizeof(message),10);
+	spi_set_register(FORCE_ADDRESS,force);
+	spi_set_register(ENCODER_ADDRESS,encoder);
 }
 
+//Based on wether the data transaction to the RPU has been valid or not, this function sets the status register
 void setStatusReg(int status)
 {
-	regs[STATUS_ADDRESS]=status;
+	spi_set_register(STATUS_ADDRESS,status);
+	CAN_LINK_STATUS=status;
 }
 
+//This state maching handles the Motherboard-Card connection which is realized through SPI connection
 void SPIStateMachine(void)
 {
 	static int state=0;
@@ -177,6 +193,7 @@ void SPIStateMachine(void)
 				convert_done_flag=0;
 				reg_load_converted();
 				setStatusReg(CONVERT_SUCCESS_STATUS);
+				spi_out_shadow_update();
 				HAL_GPIO_WritePin(IRQ_Req_GPIO_Port,IRQ_Req_Pin,GPIO_PIN_SET);
 				state=4;
 			}else
@@ -192,6 +209,7 @@ void SPIStateMachine(void)
 			else
 			{
 				setStatusReg(CONVERT_FAIL_STATUS);
+				spi_out_shadow_update();
 				HAL_GPIO_WritePin(IRQ_Req_GPIO_Port,IRQ_Req_Pin,GPIO_PIN_SET);
 				state=3;
 			}
@@ -209,8 +227,9 @@ void SPIStateMachine(void)
 	}
 
 }
-
-void CAN_GET_SENSORS_SM(void){
+//When there is a read sensor request, this state machine handles reading them from RPU
+void CAN_GET_SENSORS_SM(void)
+{
 	static int state=0;
 	if(RPU_CAN_READ_SENSORS_REQ==1)
 		{
@@ -220,12 +239,15 @@ void CAN_GET_SENSORS_SM(void){
 					RX_FLAG=0;
 					TMess.DLC=0x0;
 					TMess.StdId=0x1;
-					if(HAL_CAN_AddTxMessage(&hcan, &TMess, 0, &TxMailBox)!=HAL_OK){Error_Handler();} //Send the convert CMD
+					if(!SPI_SYS_DBUG_MODE)
+						if(HAL_CAN_AddTxMessage(&hcan, &TMess, 0, &TxMailBox)!=HAL_OK){Error_Handler();} //Send the convert CMD
 					CAN_CNVT_TIME=HAL_GetTick();
 					state=1;
 					break;
 			
 				case 1:
+					if(SPI_SYS_DBUG_MODE)
+						RX_FLAG=1;
 					if(RX_FLAG==1){
 						//Process The data Received from the Slave device
 						RX_FLAG=0;
@@ -264,6 +286,7 @@ void CAN_GET_SENSORS_SM(void){
 		}
 	}
 }
+//this state machine handles sending the DAC setpoint of the RPUs through CAN BUS
 void send_loaded_packs_SM(void)
 {
 	if(sync2_ready==1){
@@ -273,7 +296,7 @@ void send_loaded_packs_SM(void)
 			int32_t dac;
 			uint8_t buff[4];
 		}Outpack;
-		memcpy(Outpack.buff,(uint8_t*)&regs[DAC_ADDRESS],8);
+		Outpack.dac=spi_get_register(12);
 		TMess.DLC=0x2;
 		TMess.StdId=0x2;
 		if(HAL_CAN_AddTxMessage(&hcan, &TMess,Outpack.buff, &TxMailBox)!=HAL_OK){Error_Handler();}
@@ -318,11 +341,13 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_SPI1_Init();
   MX_CAN_Init();
   MX_TIM4_Init();
+  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
-	hspi1.Instance->CR2|=(1<<6); // Enable the SPI RX Interrupt
+	spi_stack_init(&hspi1);
 	HAL_TIM_Base_Start_IT(&htim4);
   /* USER CODE END 2 */
 
@@ -333,21 +358,23 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-		if(regs[100]==0x55)
+		
+		if(spi_get_register(SPI_LINK_STATUS)==0x5555)
 			{
 				LED_WD=0;
-				regs[100]=0;
-				if(regs[STATUS_ADDRESS]==CONVERT_FAIL_STATUS)
+				spi_set_rx_chache_register(SPI_LINK_STATUS,0);
+				if(CAN_LINK_STATUS==CONVERT_FAIL_STATUS)
 				{
 					LED_ON_DELAY=200;
 					LED_OFF_DELAY=200;
 				}
-				else if(regs[STATUS_ADDRESS]==CONVERT_SUCCESS_STATUS)
+				else
 				{
 					LED_ON_DELAY=100;
 					LED_OFF_DELAY=1200;
 				}
 		  }
+		
      SPIStateMachine();
 		 CAN_GET_SENSORS_SM();
 		 send_loaded_packs_SM();
@@ -473,7 +500,7 @@ static void MX_SPI1_Init(void)
   hspi1.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi1.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi1.Init.NSS = SPI_NSS_SOFT;
-  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_64;
+  hspi1.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
   hspi1.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi1.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi1.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -530,6 +557,57 @@ static void MX_TIM4_Init(void)
   /* USER CODE BEGIN TIM4_Init 2 */
 
   /* USER CODE END TIM4_Init 2 */
+
+}
+
+/**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/** 
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void) 
+{
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA1_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA1_Channel2_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel2_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel2_IRQn);
+  /* DMA1_Channel3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel3_IRQn);
 
 }
 

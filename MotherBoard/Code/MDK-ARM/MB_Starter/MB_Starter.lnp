@@ -3,6 +3,8 @@
 "mb_starter\spi_stack.o"
 "mb_starter\power_manager.o"
 "mb_starter\can_card.o"
+"mb_starter\time_keeper.o"
+"mb_starter\can_telemtry.o"
 "mb_starter\main.o"
 "mb_starter\lwip.o"
 "mb_starter\ethernetif.o"

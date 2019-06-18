@@ -82,3 +82,5 @@ mb_starter\main.o: ../Middlewares/Third_Party/LwIP/src/include/lwip/prot/udp.h
 mb_starter\main.o: ..\MDK-ARM\spi_stack.h
 mb_starter\main.o: ..\MDK-ARM\power_manager.h
 mb_starter\main.o: ..\MDK-ARM\CAN_CARD.h
+mb_starter\main.o: ../Inc/time_keeper.h
+mb_starter\main.o: ../Inc/CAN_Telemetry.h

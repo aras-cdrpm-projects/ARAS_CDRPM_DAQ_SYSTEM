@@ -335,7 +335,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>../Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;..\MDK-ARM</IncludePath>
+              <IncludePath>../Inc;      ../Drivers/STM32F1xx_HAL_Driver/Inc;      ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;      ../Drivers/CMSIS/Device/ST/STM32F1xx/Include;      ../Drivers/CMSIS/Include;      ..\MDK-ARM</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -390,6 +390,11 @@
           <GroupName>Application/User</GroupName>
           <Files>
             <File>
+              <FileName>spi_stack.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\spi_stack.c</FilePath>
+            </File>
+            <File>
               <FileName>main.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Src/main.c</FilePath>
@@ -438,6 +443,11 @@
               <FileName>stm32f1xx_hal_tim_ex.c</FileName>
               <FileType>1</FileType>
               <FilePath>../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_tim_ex.c</FilePath>
+            </File>
+            <File>
+              <FileName>stm32f1xx_hal_uart.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../Drivers/STM32F1xx_HAL_Driver/Src/stm32f1xx_hal_uart.c</FilePath>
             </File>
             <File>
               <FileName>stm32f1xx_hal.c</FileName>

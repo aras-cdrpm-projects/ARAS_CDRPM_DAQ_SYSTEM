@@ -49,6 +49,9 @@
 #include "spi_stack.h"
 #include "power_manager.h"
 #include "CAN_CARD.h"
+#include "stdio.h"
+#include "time_keeper.h"
+#include "CAN_Telemetry.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -58,7 +61,7 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define SYNQ_MODE_SLAVE 0
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -71,85 +74,76 @@ CAN_HandleTypeDef hcan1;
 
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
+DMA_HandleTypeDef hdma_spi1_rx;
+DMA_HandleTypeDef hdma_spi1_tx;
 
-TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 TIM_HandleTypeDef htim4;
+TIM_HandleTypeDef htim13;
+TIM_HandleTypeDef htim14;
 
 UART_HandleTypeDef huart5;
 UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
+char string[64];
+struct udp_pcb *UDP;
+ip_addr_t Remote_IP, Local_IP;
+extern volatile int RPI_SYNC;
+extern volatile int UDP_TFLAG;
+int SYNC_IN_FLAG =0;
+struct pbuf *Transmit_Pbuf;
+CAN_RxHeaderTypeDef RMess;
+CAN_TxHeaderTypeDef TMess;
+uint8_t  TxData[8] = {0};
+uint8_t  canRxData[8];
+uint32_t TxMailBox;
+HAL_StatusTypeDef canret;
+
+char str[32];
+uint8_t data_in_test[32];
+uint8_t data_out_test[32];
+
+volatile int SENSOtgRX_COUNTER=0;
+extern volatile int nob_encoder_index;
+CAN_TxHeaderTypeDef TMess;
+
+union UDP_packet{
+	struct
+	{
+		int32_t accel[3];
+		int32_t gyro[3];
+		int32_t magn[3];
+		int32_t nob_encoder;
+		int32_t mot_encoders[4];
+		int32_t force[4];
+		uint32_t IMU_TimeStamp;
+		uint32_t RPU_TimeStamp;
+		uint32_t CAM_TimeStamp;
+	}Data;
+	uint8_t buff[84];
+}outPacket;
+
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_DMA_Init(void);
 static void MX_USART3_UART_Init(void);
 static void MX_SPI2_Init(void);
 static void MX_UART5_Init(void);
-static void MX_TIM1_Init(void);
 static void MX_CAN1_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_GFXSIMULATOR_Init(void);
 static void MX_TIM4_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM14_Init(void);
+static void MX_TIM13_Init(void);
 /* USER CODE BEGIN PFP */
-struct udp_pcb *UDP;
-ip_addr_t Remote_IP, Local_IP;
-extern volatile int RPI_SYNC;
-extern volatile int UDP_TFLAG;
-struct pbuf *Transmit_Pbuf;
-
-
-/*
-union{
-	struct
-	{
-		struct
-		{
-			int32_t encoder;
-			int32_t analog;
-		}sensor_data[4];
-		struct
-		{
-			int16_t x;
-			int16_t y;
-			int16_t z;
-		}IMU[2];
-		float pos_x;
-		float pos_y;
-		float pos_z;
-	}Data;
-	uint8_t buff[56];
-}outPacket;
-*/
-union{
-	struct
-	{
-		int32_t a;
-		int32_t b;
-	}Data;
-	uint8_t buff[8];
-}outPacket;
-
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
-CAN_RxHeaderTypeDef RMess;
-CAN_TxHeaderTypeDef TMess;
-uint8_t TxData[8] = {0};
-uint8_t canRxData[8];
-uint32_t TxMailBox;
-HAL_StatusTypeDef canret;
-
-volatile char str[32];
-volatile int SENSOtgRX_COUNTER=0;
-extern volatile int nob_encoder_index;
 int32_t nob_encoder_read(void);
 
 /////////////////RPI CODE STARTS HERE
@@ -163,15 +157,71 @@ void setStatusReg(int status)
 {
 	//regs[STATUS_ADDRESS]=status;
 }
-/////////////////RPI CODE ENDS HERE
+// DAQ UDP Data Transaction
+void makeUdpPacket(void)
+{
+	uint8_t rpusStatus;
+	//Put the RPU Packets in the outpacket buffers
+	outPacket.Data.accel[0]=accel[0];
+	outPacket.Data.accel[1]=accel[1];
+	outPacket.Data.accel[2]=accel[2];
+
+	outPacket.Data.gyro[0]=gyro[0];
+	outPacket.Data.gyro[1]=gyro[1];
+	outPacket.Data.gyro[2]=gyro[2];
+
+	outPacket.Data.magn[0]=magnetometer[0];
+	outPacket.Data.magn[1]=magnetometer[1];
+	outPacket.Data.magn[2]=magnetometer[2];
+
+	//get the sensor values from the RPUs 
+	rpusStatus=getConversionStatus();
+	//if the status is not success, set the corresponding measurements to a specefic number 
+	if(rpusStatus&(1<<0))
+		rpuGetSensorData(&outPacket.Data.mot_encoders[0],&outPacket.Data.force[0],0);
+	else
+		outPacket.Data.force[0]=-5000;
+	
+	if(rpusStatus&(1<<0))
+		rpuGetSensorData(&outPacket.Data.mot_encoders[1],&outPacket.Data.force[1],1);
+	else
+		outPacket.Data.force[1]=-5000;
+	if(rpusStatus&(1<<0))
+		rpuGetSensorData(&outPacket.Data.mot_encoders[2],&outPacket.Data.force[2],2);
+	else
+		outPacket.Data.force[2]=-5000;
+	if(rpusStatus&(1<<0))
+		rpuGetSensorData(&outPacket.Data.mot_encoders[3],&outPacket.Data.force[3],3);
+	else
+		outPacket.Data.force[3]=-5000;
 
 
+	//read the nobe encoder and store its data into the output packet
+	outPacket.Data.nob_encoder=nob_encoder_read();
+	//Get the time Stamps
+	outPacket.Data.RPU_TimeStamp=RPU_TimeStamp();
+	outPacket.Data.IMU_TimeStamp=IMU_TimeStamp();
+	outPacket.Data.CAM_TimeStamp=Camera_TimeStamp();
+}
 
+void sendUdpPacket(void)
+{
+	Transmit_Pbuf=pbuf_alloc(PBUF_TRANSPORT, sizeof(outPacket.buff), PBUF_RAM);
+	pbuf_take(Transmit_Pbuf, outPacket.buff, sizeof(outPacket.buff));
+	udp_sendto(UDP, Transmit_Pbuf, &Remote_IP, 5500);
+	pbuf_free(Transmit_Pbuf);
+}
+void readSensors()
+{
+	//RPUs start conversion
+	sensorStartConversion();
+	RPU_Tick();
+}
 
+/* USER CODE END PFP */
 
-
-CAN_TxHeaderTypeDef TMess;
-
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
 
 /* USER CODE END 0 */
 
@@ -182,18 +232,7 @@ CAN_TxHeaderTypeDef TMess;
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	outPacket.Data.a=1;
-	outPacket.Data.b=10;
-	TMess.RTR = CAN_RTR_DATA;
-  TMess.IDE = CAN_ID_STD;
-  TMess.DLC = 0x2;
-	TMess.StdId=0x1;
-	
-	float pos[]={1.5,2.5,3.5};
-	float q[]={0,2,3,4};
-
-
-	uint8_t keys[4];
+	int loop_delay_counter=0;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -214,69 +253,96 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+  MX_DMA_Init();
   MX_USART3_UART_Init();
   MX_SPI2_Init();
   MX_UART5_Init();
   MX_LWIP_Init();
-  MX_TIM1_Init();
   MX_CAN1_Init();
   MX_SPI1_Init();
   MX_GFXSIMULATOR_Init();
   MX_TIM4_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
+  MX_TIM14_Init();
+  MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
-	HAL_TIM_Base_Start_IT(&htim1);
+	HAL_TIM_Base_Start_IT(&htim14);// Timer for CAN CARD Heart beats
 	HAL_TIM_Base_Start_IT(&htim4);
 	CAN_CARDS_INIT();
 	powerManager_init();
+	can_stack_init(&hcan1);
+	timeManagerInit(&htim13);
 	nob_encoder_index=0;	//Reset the encoder index in case an unwanted interrupt occures.
 	IP_ADDR4(&Local_IP, 192, 168, 50, 100);
-	IP_ADDR4(&Remote_IP, 192, 168, 50, 110);
+	IP_ADDR4(&Remote_IP, 192, 168, 50, 50);
 	UDP=udp_new();
 	udp_bind(UDP, IP_ADDR_ANY, 5500);
-	Transmit_Pbuf=pbuf_alloc(PBUF_TRANSPORT, sizeof(outPacket.Data), PBUF_RAM);
-	spi_stack_init(&hspi1);
+	//spi_stack_init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	HAL_Delay(500);
-	uint8_t data[2]={1 , 2};
-	spi_regs[0]=1;
-	spi_regs[1]=2;
-	spi_regs[2]=3;
-	spi_regs[3]=4;
+	
   while (1)
 	{
 		//HAL_CAN_AddTxMessage(&hcan1, &TMess, data, &TxMailBox);
-		readKeys(keys);
-		pos[0]=(float)keys[0];
-		pos[1]=(float)keys[1];
-		pos[2]=(float)nob_encoder_read();
-		IMP_Write(pos,q);
+
 		//
-		/*
-			sprintf(str,"\n\n%x ,\t %x\n\r",sensor_data[0].Data.analog,sensor_data[0].Data.encoder);
-			HAL_UART_Transmit(&huart5, str, sizeof(str), 10);	
-			sprintf(str,"%x ,\t %x\n\r",sensor_data[1].Data.analog,sensor_data[1].Data.encoder);
-			HAL_UART_Transmit(&huart5, str, sizeof(str), 10);	
-			sprintf(str,"%x ,\t %x\n\r",sensor_data[2].Data.analog,sensor_data[2].Data.encoder);
-			HAL_UART_Transmit(&huart5, str, sizeof(str), 10);	
-			sprintf(str,"%x ,\t %x\n\r",sensor_data[3].Data.analog,sensor_data[3].Data.encoder);
-			HAL_UART_Transmit(&huart5, str, sizeof(str), 10);	
-		*/
-		int vals[4]={1000,2000,3000,4000};
-		if (UDP_TFLAG==1)
+		if(HAL_GPIO_ReadPin(DAQ_SYNQ_MODE_GPIO_Port,DAQ_SYNQ_MODE_Pin)==SYNQ_MODE_SLAVE)
+		{
+			if(SYNC_IN_FLAG)
 			{
-			ledStateMachine();
-			poweSwitchStateMachine();
-			dacSend(vals);
-			sensorStartConversion();
-			//while(SENSOR_RX_FLAG==0);
-			UDP_TFLAG=0;
-			//pbuf_take(Transmit_Pbuf, outPacket.buff, sizeof(outPacket.buff));
-			//udp_sendto(UDP, Transmit_Pbuf, &Remote_IP, 5500);
+				SYNC_IN_FLAG=0;
+				//readKeys(keys);
+				//pos[0]=(float)keys[0];
+				//pos[1]=(float)1.5;
+				//pos[2]=(float)2.5;
+				//IMP_Write(pos,q);
+				//IMU_Write(val,val,val);
+				//RPUs_Write(encoders,forces);
+				//SlidersRead(keys);
+				
+				//ledStateMachine();
+				//poweSwitchStateMachine();
+				//dacSend(vals);
+				readSensors();
+				makeUdpPacket();
+				sendUdpPacket();
+			}
+		}
+		else
+		{
+			if (UDP_TFLAG==1)
+			{
+				UDP_TFLAG=0;
+				if(loop_delay_counter>=0)
+				{
+					loop_delay_counter=0;
+					HAL_GPIO_WritePin(DAQ_SYNC_OUT_GPIO_Port,DAQ_SYNC_OUT_Pin,
+														!HAL_GPIO_ReadPin(DAQ_SYNC_OUT_GPIO_Port,DAQ_SYNC_OUT_Pin)); //Toggle the Sync output
+					//readKeys(keys);
+					//pos[0]=(float)keys[0];
+					//pos[1]=(float)1.5;
+					//pos[2]=(float)2.5;
+					//IMP_Write(pos,q);
+					//IMU_Write(val,val,val);
+					//RPUs_Write(encoders,forces);
+					//SlidersRead(keys);
+					
+					//ledStateMachine();
+					//poweSwitchStateMachine();
+					//dacSend(vals);
+					readSensors();
+					makeUdpPacket();
+					sendUdpPacket();
+					
+				}
+				else
+				{
+					loop_delay_counter++;
+				}
+			}
 			}
 			MX_LWIP_Process();
     /* USER CODE END WHILE */
@@ -358,16 +424,6 @@ static void MX_CAN1_Init(void)
   /* USER CODE END CAN1_Init 0 */
 
   /* USER CODE BEGIN CAN1_Init 1 */
-	CAN_FilterTypeDef  sFilterConfig;
-	sFilterConfig.FilterBank = 0;
-  sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
-  sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-  sFilterConfig.FilterIdHigh = 0x0000;
-  sFilterConfig.FilterIdLow = 0x0000;
-  sFilterConfig.FilterMaskIdHigh = 0x0000;
-  sFilterConfig.FilterMaskIdLow = 0x0000;
-  sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
-  sFilterConfig.FilterActivation = ENABLE;
   /* USER CODE END CAN1_Init 1 */
   hcan1.Instance = CAN1;
   hcan1.Init.Prescaler = 18;
@@ -386,18 +442,6 @@ static void MX_CAN1_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN CAN1_Init 2 */
-	if (HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-	if (HAL_CAN_Start(&hcan1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-	//if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
-  //{
-  //  Error_Handler();
-  //}
   /* USER CODE END CAN1_Init 2 */
 
 }
@@ -485,7 +529,7 @@ static void MX_SPI2_Init(void)
   hspi2.Init.CLKPolarity = SPI_POLARITY_LOW;
   hspi2.Init.CLKPhase = SPI_PHASE_1EDGE;
   hspi2.Init.NSS = SPI_NSS_SOFT;
-  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_8;
+  hspi2.Init.BaudRatePrescaler = SPI_BAUDRATEPRESCALER_16;
   hspi2.Init.FirstBit = SPI_FIRSTBIT_MSB;
   hspi2.Init.TIMode = SPI_TIMODE_DISABLE;
   hspi2.Init.CRCCalculation = SPI_CRCCALCULATION_DISABLE;
@@ -499,53 +543,6 @@ static void MX_SPI2_Init(void)
   /* USER CODE BEGIN SPI2_Init 2 */
 
   /* USER CODE END SPI2_Init 2 */
-
-}
-
-/**
-  * @brief TIM1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM1_Init(void)
-{
-
-  /* USER CODE BEGIN TIM1_Init 0 */
-
-  /* USER CODE END TIM1_Init 0 */
-
-  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
-  TIM_MasterConfigTypeDef sMasterConfig = {0};
-
-  /* USER CODE BEGIN TIM1_Init 1 */
-
-  /* USER CODE END TIM1_Init 1 */
-  htim1.Instance = TIM1;
-  htim1.Init.Prescaler = 999;
-  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim1.Init.Period = 215;
-  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim1.Init.RepetitionCounter = 0;
-  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
-  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
-  sMasterConfig.MasterOutputTrigger2 = TIM_TRGO2_RESET;
-  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
-  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM1_Init 2 */
-
-  /* USER CODE END TIM1_Init 2 */
 
 }
 
@@ -697,6 +694,68 @@ static void MX_TIM4_Init(void)
 }
 
 /**
+  * @brief TIM13 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM13_Init(void)
+{
+
+  /* USER CODE BEGIN TIM13_Init 0 */
+
+  /* USER CODE END TIM13_Init 0 */
+
+  /* USER CODE BEGIN TIM13_Init 1 */
+
+  /* USER CODE END TIM13_Init 1 */
+  htim13.Instance = TIM13;
+  htim13.Init.Prescaler = 107;
+  htim13.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim13.Init.Period = 65535;
+  htim13.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim13.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim13) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM13_Init 2 */
+
+  /* USER CODE END TIM13_Init 2 */
+
+}
+
+/**
+  * @brief TIM14 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM14_Init(void)
+{
+
+  /* USER CODE BEGIN TIM14_Init 0 */
+
+  /* USER CODE END TIM14_Init 0 */
+
+  /* USER CODE BEGIN TIM14_Init 1 */
+
+  /* USER CODE END TIM14_Init 1 */
+  htim14.Instance = TIM14;
+  htim14.Init.Prescaler = 9999;
+  htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim14.Init.Period = 107;
+  htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim14) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM14_Init 2 */
+
+  /* USER CODE END TIM14_Init 2 */
+
+}
+
+/**
   * @brief UART5 Initialization Function
   * @param None
   * @retval None
@@ -766,6 +825,24 @@ static void MX_USART3_UART_Init(void)
 
 }
 
+/** 
+  * Enable DMA controller clock
+  */
+static void MX_DMA_Init(void) 
+{
+  /* DMA controller clock enable */
+  __HAL_RCC_DMA2_CLK_ENABLE();
+
+  /* DMA interrupt init */
+  /* DMA2_Stream0_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+  /* DMA2_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA2_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2_Stream3_IRQn);
+
+}
+
 /**
   * @brief GPIO Initialization Function
   * @param None
@@ -776,14 +853,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitTypeDef GPIO_InitStruct = {0};
 
   /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOC_CLK_ENABLE();
   __HAL_RCC_GPIOF_CLK_ENABLE();
   __HAL_RCC_GPIOH_CLK_ENABLE();
   __HAL_RCC_GPIOA_CLK_ENABLE();
   __HAL_RCC_GPIOB_CLK_ENABLE();
-  __HAL_RCC_GPIOE_CLK_ENABLE();
   __HAL_RCC_GPIOD_CLK_ENABLE();
   __HAL_RCC_GPIOG_CLK_ENABLE();
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOE, DAQ_SYNC_OUT_Pin|CS1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOF, CS4_Pin|CS3_Pin|CS2_Pin, GPIO_PIN_RESET);
@@ -792,13 +872,29 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOB, LD1_Pin|LD3_Pin|LD2_Pin|BL_EN_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(CS1_GPIO_Port, CS1_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOG, TEST_Pin|CAN_SYNC1_Pin|CAN_SYNC2_Pin|USB_PowerSwitchOn_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOD, RPi_PW_Pin|RPI_SPW_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : DAQ_SYNQ_MODE_Pin */
+  GPIO_InitStruct.Pin = DAQ_SYNQ_MODE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(DAQ_SYNQ_MODE_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : DAQ_SYNC_IN_Pin */
+  GPIO_InitStruct.Pin = DAQ_SYNC_IN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(DAQ_SYNC_IN_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : DAQ_SYNC_OUT_Pin CS1_Pin */
+  GPIO_InitStruct.Pin = DAQ_SYNC_OUT_Pin|CS1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pin : USER_Btn_Pin */
   GPIO_InitStruct.Pin = USER_Btn_Pin;
@@ -831,13 +927,6 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : CS1_Pin */
-  GPIO_InitStruct.Pin = CS1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(CS1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : TEST_Pin CAN_SYNC1_Pin CAN_SYNC2_Pin USB_PowerSwitchOn_Pin */
   GPIO_InitStruct.Pin = TEST_Pin|CAN_SYNC1_Pin|CAN_SYNC2_Pin|USB_PowerSwitchOn_Pin;
@@ -894,37 +983,19 @@ static void MX_GPIO_Init(void)
 /* USER CODE BEGIN 4 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	CC_Interrupt_rutine(GPIO_Pin);
+	
+	if(GPIO_Pin==DAQ_SYNC_IN_Pin) //The sync interrupt is asserted, this signal comes from the IMU thus, the IMU timestamp 
+																//should be recorded
+	{
+		SYNC_IN_FLAG=1;
+		IMU_Tick();
+	}
+	
 }
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
-  if (HAL_CAN_GetRxMessage(hcan, CAN_RX_FIFO0, &RMess, canRxData) != HAL_OK)
-  {
-    Error_Handler();
-  }
-	
-	if((RMess.StdId==(uint8_t)10)&&(RMess.IDE==CAN_ID_STD)){
-		//memcpy(IMP.buffer, canRxData, 8);
-	}
-	if((RMess.StdId==(uint8_t)11)&&(RMess.IDE==CAN_ID_STD)){
-		//memcpy(&IMP.buffer[9], canRxData, 4);
-	}
-	if((RMess.StdId==(uint8_t)12)&&(RMess.IDE==CAN_ID_STD)){
-		//memcpy(&IMP.buffer[13], canRxData, 8);
-	}
-	if((RMess.StdId==(uint8_t)13)&&(RMess.IDE==CAN_ID_STD)){
-		//memcpy(&IMP.buffer[21], canRxData, 6);
-	}
-	if((RMess.StdId==(uint8_t)14)&&(RMess.IDE==CAN_ID_STD)){
-		//memcpy(&IMU.buffer, canRxData, 6);
-	}
-	if((RMess.StdId==(uint8_t)15)&&(RMess.IDE==CAN_ID_STD)){
-		//memcpy(&IMU.buffer[13], canRxData, 6);
-	}
-	if((RMess.StdId==(uint8_t)16)&&(RMess.IDE==CAN_ID_STD)){
-		//memcpy(&IMU.buffer[25], canRxData, 6);
-	}
-	
+	can_stack_interrupt_rutine(hcan);
 }
 /* USER CODE END 4 */
 

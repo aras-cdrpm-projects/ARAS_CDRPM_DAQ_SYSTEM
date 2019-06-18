@@ -18,6 +18,9 @@ void CCU_Read(uint8_t Address,uint8_t *data,int len , int CCU_CS);
 void CC_Interrupt_rutine(uint16_t GPIO_Pin);
 void sensorStartConversion(void);
 void ccuHeartBeat(void);
+void rpuGetSensorData(int32_t *encoder,int32_t *force,int channel);
+uint8_t getConversionStatus(void);
+
 
 #endif
 

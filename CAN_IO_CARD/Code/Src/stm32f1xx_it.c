@@ -38,6 +38,7 @@
 #include "stm32f1xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "spi_stack.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,24 +63,29 @@
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
+void spi_dma_rx_complete_rutine(void);
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-volatile int spi_flag=0;
-volatile uint8_t spi_rx=0;
-volatile int spiByteCounter=0, sync2_ready=0;
-volatile uint8_t address;
-volatile uint8_t R_W=0;
+
+//volatile int spi_flag=0;
+//volatile uint8_t spi_rx=0;
+volatile int  sync2_ready=0;//spiByteCounter=0;
+//volatile uint8_t address;
+//volatile uint8_t R_W=0;
 volatile uint8_t regs[128];
 extern volatile int sync1_intflag;
 extern	int LED_BeatFlag;
+
 
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
 extern CAN_HandleTypeDef hcan;
+extern DMA_HandleTypeDef hdma_spi1_rx;
+extern DMA_HandleTypeDef hdma_spi1_tx;
 extern SPI_HandleTypeDef hspi1;
 extern TIM_HandleTypeDef htim4;
 /* USER CODE BEGIN EV */
@@ -290,6 +296,7 @@ void EXTI1_IRQHandler(void)
 void EXTI4_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI4_IRQn 0 */
+	/*
 	uint8_t data;
 		while(hspi1.Instance->SR&0x1)
 		 data= (uint8_t)hspi1.Instance->DR;
@@ -306,11 +313,42 @@ void EXTI4_IRQHandler(void)
 			hspi1.Instance->CR1|=(1<<6); //Enable the SPI Module
 
 		}
+	*/
+	
+	spi_stack_CS_Mng(&hspi1);
   /* USER CODE END EXTI4_IRQn 0 */
   HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_4);
   /* USER CODE BEGIN EXTI4_IRQn 1 */
 
   /* USER CODE END EXTI4_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA1 channel2 global interrupt.
+  */
+void DMA1_Channel2_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
+	//spi_dma_rx_complete_rutine();
+  /* USER CODE END DMA1_Channel2_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_spi1_rx);
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel2_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA1 channel3 global interrupt.
+  */
+void DMA1_Channel3_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel3_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel3_IRQn 0 */
+  HAL_DMA_IRQHandler(&hdma_spi1_tx);
+  /* USER CODE BEGIN DMA1_Channel3_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel3_IRQn 1 */
 }
 
 /**
@@ -383,6 +421,9 @@ void TIM4_IRQHandler(void)
 void SPI1_IRQHandler(void)
 {
   /* USER CODE BEGIN SPI1_IRQn 0 */
+	
+	
+	/*
 	uint8_t data;
 	data= (uint8_t)hspi1.Instance->DR;
 		if(spiByteCounter==0) //Is it the first Byte? If yes, Exteract the Address and RW cmd
@@ -400,8 +441,12 @@ void SPI1_IRQHandler(void)
 		}
 		address++;
 		spiByteCounter++; // Remember Remember! comment out the HAL_SPI_IRQHandler(&hspi1); line.
+		*/
+	
+	
+	
   /* USER CODE END SPI1_IRQn 0 */
-  //HAL_SPI_IRQHandler(&hspi1);
+  HAL_SPI_IRQHandler(&hspi1);
   /* USER CODE BEGIN SPI1_IRQn 1 */
 
   /* USER CODE END SPI1_IRQn 1 */

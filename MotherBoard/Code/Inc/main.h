@@ -80,6 +80,13 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define DAQ_SYNQ_MODE_Pin GPIO_PIN_4
+#define DAQ_SYNQ_MODE_GPIO_Port GPIOE
+#define DAQ_SYNC_IN_Pin GPIO_PIN_5
+#define DAQ_SYNC_IN_GPIO_Port GPIOE
+#define DAQ_SYNC_IN_EXTI_IRQn EXTI9_5_IRQn
+#define DAQ_SYNC_OUT_Pin GPIO_PIN_6
+#define DAQ_SYNC_OUT_GPIO_Port GPIOE
 #define USER_Btn_Pin GPIO_PIN_13
 #define USER_Btn_GPIO_Port GPIOC
 #define USER_Btn_EXTI_IRQn EXTI15_10_IRQn

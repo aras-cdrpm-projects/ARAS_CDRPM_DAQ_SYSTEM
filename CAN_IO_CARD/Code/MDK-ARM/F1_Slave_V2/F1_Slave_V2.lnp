@@ -1,5 +1,6 @@
 --cpu Cortex-M3
 "f1_slave_v2\startup_stm32f103xb.o"
+"f1_slave_v2\spi_stack.o"
 "f1_slave_v2\main.o"
 "f1_slave_v2\stm32f1xx_it.o"
 "f1_slave_v2\stm32f1xx_hal_msp.o"
@@ -9,6 +10,7 @@
 "f1_slave_v2\stm32f1xx_hal_spi_ex.o"
 "f1_slave_v2\stm32f1xx_hal_tim.o"
 "f1_slave_v2\stm32f1xx_hal_tim_ex.o"
+"f1_slave_v2\stm32f1xx_hal_uart.o"
 "f1_slave_v2\stm32f1xx_hal.o"
 "f1_slave_v2\stm32f1xx_hal_rcc.o"
 "f1_slave_v2\stm32f1xx_hal_rcc_ex.o"

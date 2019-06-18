@@ -26,4 +26,5 @@ f1_slave_v2\spi_stack.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pwr.h
 f1_slave_v2\spi_stack.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h
 f1_slave_v2\spi_stack.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h
 f1_slave_v2\spi_stack.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h
+f1_slave_v2\spi_stack.o: ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h
 f1_slave_v2\spi_stack.o: D:\Programs Install\keil\ARM\ARMCC\Bin\..\include\string.h

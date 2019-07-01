@@ -1,7 +1,9 @@
 #include "main.h"
 
 #define POWER_KEY (1-HAL_GPIO_ReadPin(Power_Key_GPIO_Port,Power_Key_Pin))
-#define RASPI_STATUS	HAL_GPIO_ReadPin(RPI_PW_STAT_GPIO_Port,RPI_PW_STAT_Pin)
+//#define RASPI_STATUS	HAL_GPIO_ReadPin(RPI_PW_STAT_GPIO_Port,RPI_PW_STAT_Pin)
+#define RASPI_STATUS	HAL_GPIO_ReadPin(GPIOF,GPIO_PIN_7)
+
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim3;
 volatile float POWER_LED_PWM=0;

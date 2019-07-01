@@ -5,8 +5,14 @@
 #define RPUs_BASEADDRESS    68
 #define KEYS_BASEADDRESS    102
 #define SLIDERS_BASEADDRESS 110
-uint8_t spi_rxBuff[128],spi_txBuff[128];
-uint8_t rxBuff[128],txBuff[128];
+#define BUFF_SIZE 128
+extern SPI_HandleTypeDef hspi1;
+uint8_t spi_rxBuff[BUFF_SIZE],spi_txBuff[BUFF_SIZE];
+
+uint8_t spi_shadow_in[BUFF_SIZE] ,spi_shadow_out[BUFF_SIZE];
+uint8_t spi_test_out[BUFF_SIZE];
+
+
 
     union{
         struct
@@ -63,58 +69,66 @@ void regWrite(uint8_t Address,uint8_t *data,int len)
 {
     memcpy((uint8_t *)&spi_txBuff[Address],(uint8_t *)data,len);
 }
-void spi_stack_init(void){
-	memset((uint8_t*)spi_rxBuff,0x00,sizeof(spi_rxBuff));
-	memset((uint8_t*)spi_txBuff,0x00,sizeof(spi_rxBuff));
-	//DMA Config, DMA2 Stream 0 is for SPI_RX and DMA2 Stream 3 is for SPI TX
-	//DAM2 Stream0 SPI_RX
-	DMA2_Stream0->CR=0;
-	DMA2_Stream0->CR|=(3<<25);//set Chanel 3
-	DMA2_Stream0->CR|=(2<<16);//Prrority
-	DMA2_Stream0->CR|=(1<<10);//mem Address incriment
-	DMA2_Stream0->CR|=(1<<4);//Transfer Complete interrupt enable
-	//DAM2 Stream0 SPI_TX
-	DMA2_Stream3->CR=0;
-	DMA2_Stream3->CR|=(3<<25);//set Chanel 3
-	DMA2_Stream3->CR|=(2<<16);//Prrority
-	DMA2_Stream3->CR|=(1<<10);//mem Address incriment
-	DMA2_Stream3->CR|=(1<<6);//Memory to pripheral transfer 
-	//Set the DMA addresses
-	DMA2_Stream0->PAR=(volatile unsigned int)&(SPI1->DR);
-	DMA2_Stream0->M0AR=(volatile unsigned int)rxBuff;
 
-	DMA2_Stream3->PAR=(unsigned int)&(SPI1->DR);
-	DMA2_Stream3->M0AR=(unsigned int)txBuff;
+void spi_out_shadow_update(void)
+{
+			memcpy((uint8_t*)spi_shadow_out,spi_txBuff,BUFF_SIZE);//copy the shadow buffer to the rx buffer
+			//spi_shadow_out[BUFF_SIZE-1]=0x55;// the vertification header 
+}
+void gui_spi_set_register(int address,int32_t val)
+{
+	union{
+	int32_t val;
+	uint8_t buff[4];
+	}packet;
+	packet.val=val;
+	memcpy((uint8_t*)&spi_txBuff[address],(uint8_t*)packet.buff,4);
 }
 
-void spi_stack_CS_Mng(void){
+int32_t gui_spi_get_register(int address)
+{
+	union{
+	int32_t val;
+	uint8_t buff[4];
+	}packet;
+	memcpy((uint8_t*)packet.buff,(uint8_t*)&spi_rxBuff[address],4);
+	return packet.val;
+}
+void spi_set_rx_chache_register(int address,int32_t val)
+{
+	union{
+	int32_t val;
+	uint8_t buff[4];
+	}packet;
+	packet.val=val;
+	memcpy((uint8_t*)&spi_rxBuff[address],(uint8_t*)packet.buff,4);
+}
+
+
+
+void spi_stack_init(SPI_HandleTypeDef *spi){
+	memset((uint8_t*)spi_rxBuff,0x00,sizeof(spi_rxBuff));
+	memset((uint8_t*)spi_txBuff,0x00,sizeof(spi_rxBuff));
+	memset((uint8_t*)spi_rxBuff,0x00,sizeof(spi_shadow_out));
+	memset((uint8_t*)spi_txBuff,0x00,sizeof(spi_shadow_in));
+	spi_shadow_out[BUFF_SIZE-1]=0x55;// the vertification header 
+	spi->Instance->CR1|=(1<<8); // Put the deevice in slave mode
+
+}
+void spi_stack_CS_Mng(SPI_HandleTypeDef *spi){
 		if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_4)) //If the interrupt is generated due to a rising edge, The SPI module and the software SS signals
 																					 //Have to be set
 		{
-			DMA2_Stream0->CR&=~(1<<0);
-			DMA2_Stream3->CR&=~(1<<0);
-			DMA2->LIFCR=0xffffffff; //Clear All DMA Flags
-			SPI1->CR1|=(1<<8); //SET the SW NSS Signal
-			SPI1->CR1&=~(1<<6);// Enable The SPI Module
-			SPI1->CR2&=~(1<<0); //Disable the DMA FIFO in the SPI Module 
-		  SPI1->CR2&=~(1<<1);
+			spi->Instance->CR1|=(1<<8); //SET the SW NSS Signal
+			spi->Instance->CR1&=~(1<<6);//Desable The SPI Module so that the Buffers get flused
+			//rearm the DMA and SPI System
+			HAL_SPI_DMAStop(&hspi1);
+			//if(spi_shadow_in[BUFF_SIZE-1]==0x55) // The received data is valid if the last byte is 0x55
+				memcpy((uint8_t*)spi_rxBuff,spi_shadow_in,BUFF_SIZE);//copy the shadow buffer to the rx buffer
+			HAL_SPI_TransmitReceive_DMA(&hspi1,spi_shadow_out,spi_shadow_in,128); //Start The DMA in circular Mode and assign the buffers
 		}else{
-			memcpy((uint8_t*)txBuff,(uint8_t *)spi_txBuff,sizeof(spi_txBuff));
-			SPI1->CR2|=(1<<0);
-		  SPI1->CR2|=(1<<1);
-			DMA2_Stream0->NDTR=128;
-		  DMA2_Stream3->NDTR=128;
-			DMA2->LIFCR=0xffffffff; //Clear all Flags
-			DMA2_Stream0->CR|=(1<<0);
-			DMA2_Stream3->CR|=(1<<0);
-			SPI1->CR1&=~(1<<8); //Restet the SW NSS Signal
-			SPI1->CR1|=(1<<6);// Enable The SPI Module
+			spi->Instance->CR1&=~(1<<8); //Restet the SW NSS Signal
 		}
-}
-
-
-void spi_dma_rx_complete_rutine(void){
-	memcpy((uint8_t*)spi_rxBuff,(uint8_t *)rxBuff,sizeof(rxBuff));
 }
 void IMP_Write(float *pos, float *q)
 {

@@ -84,7 +84,11 @@ TIM_HandleTypeDef htim13;
 TIM_HandleTypeDef htim14;
 
 UART_HandleTypeDef huart5;
+UART_HandleTypeDef huart7;
 UART_HandleTypeDef huart3;
+DMA_HandleTypeDef hdma_uart5_tx;
+DMA_HandleTypeDef hdma_uart7_tx;
+DMA_HandleTypeDef hdma_uart7_rx;
 
 /* USER CODE BEGIN PV */
 char string[64];
@@ -125,7 +129,23 @@ union UDP_packet{
 	uint8_t buff[84];
 }outPacket;
 
-
+union {
+	struct
+	{
+		uint8_t header1;
+		uint8_t header2;
+		int32_t accel[3];
+		int32_t gyro[3];
+		int32_t magn[3];
+		int32_t nob_encoder;
+		int32_t mot_encoders[4];
+		int32_t force[4];
+		uint32_t IMU_TimeStamp;
+		uint32_t RPU_TimeStamp;
+		uint32_t CAM_TimeStamp;
+	}Data;
+	uint8_t buff[86];
+}guiPacket;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -143,8 +163,10 @@ static void MX_TIM2_Init(void);
 static void MX_TIM3_Init(void);
 static void MX_TIM14_Init(void);
 static void MX_TIM13_Init(void);
+static void MX_UART7_Init(void);
 /* USER CODE BEGIN PFP */
 int32_t nob_encoder_read(void);
+void nob_encoder_reset(void);
 
 /////////////////RPI CODE STARTS HERE
 
@@ -180,21 +202,30 @@ void makeUdpPacket(void)
 	if(rpusStatus&(1<<0))
 		rpuGetSensorData(&outPacket.Data.mot_encoders[0],&outPacket.Data.force[0],0);
 	else
+	{
 		outPacket.Data.force[0]=-5000;
+		outPacket.Data.mot_encoders[0]=-5000;
+	}
 	
-	if(rpusStatus&(1<<0))
+	if(rpusStatus&(1<<1))
 		rpuGetSensorData(&outPacket.Data.mot_encoders[1],&outPacket.Data.force[1],1);
 	else
+	{
 		outPacket.Data.force[1]=-5000;
-	if(rpusStatus&(1<<0))
+		outPacket.Data.mot_encoders[1]=-5000;
+	}	if(rpusStatus&(1<<2))
 		rpuGetSensorData(&outPacket.Data.mot_encoders[2],&outPacket.Data.force[2],2);
 	else
+	{
 		outPacket.Data.force[2]=-5000;
-	if(rpusStatus&(1<<0))
+		outPacket.Data.mot_encoders[2]=-5000;
+	}	if(rpusStatus&(1<<3))
 		rpuGetSensorData(&outPacket.Data.mot_encoders[3],&outPacket.Data.force[3],3);
 	else
+	{
 		outPacket.Data.force[3]=-5000;
-
+		outPacket.Data.mot_encoders[3]=-5000;
+	}
 
 	//read the nobe encoder and store its data into the output packet
 	outPacket.Data.nob_encoder=nob_encoder_read();
@@ -211,11 +242,29 @@ void sendUdpPacket(void)
 	udp_sendto(UDP, Transmit_Pbuf, &Remote_IP, 5500);
 	pbuf_free(Transmit_Pbuf);
 }
+
+void sendUartTelemtry(void)
+{
+	HAL_UART_DMAStop(&huart5);
+	HAL_UART_Transmit_DMA(&huart5,outPacket.buff,sizeof(outPacket.buff));
+}
 void readSensors()
 {
 	//RPUs start conversion
 	sensorStartConversion();
 	RPU_Tick();
+}
+void sendGuiData(void)
+{
+	static int counter=0;
+	if(counter <30)
+		counter++;
+	else{
+		guiPacket.Data.header1='a';
+		guiPacket.Data.header2='b';
+		memcpy(&guiPacket.buff[2],outPacket.buff,sizeof(outPacket.buff));
+		HAL_UART_Transmit_DMA(&huart7,guiPacket.buff,sizeof(guiPacket.buff));
+	}
 }
 
 /* USER CODE END PFP */
@@ -233,6 +282,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 	int loop_delay_counter=0;
+	int uart_telemtry_loop_delay=30;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -266,10 +316,10 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM14_Init();
   MX_TIM13_Init();
+  MX_UART7_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim14);// Timer for CAN CARD Heart beats
 	HAL_TIM_Base_Start_IT(&htim4);
-	CAN_CARDS_INIT();
 	powerManager_init();
 	can_stack_init(&hcan1);
 	timeManagerInit(&htim13);
@@ -278,7 +328,12 @@ int main(void)
 	IP_ADDR4(&Remote_IP, 192, 168, 50, 50);
 	UDP=udp_new();
 	udp_bind(UDP, IP_ADDR_ANY, 5500);
-	//spi_stack_init();
+  //spi_stack_init(&hspi1);//The SPI Slave subsystem for telemetry to the GUI System is faulty and needs further work
+	CAN_CARDS_INIT();
+	nob_encoder_reset();
+
+	float q[4];
+	float pos[3];
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -295,10 +350,13 @@ int main(void)
 			{
 				SYNC_IN_FLAG=0;
 				//readKeys(keys);
-				//pos[0]=(float)keys[0];
+				//q[0]=1;
+				//q[1]=2;
+			  //pos[0]=(float)0;
 				//pos[1]=(float)1.5;
 				//pos[2]=(float)2.5;
 				//IMP_Write(pos,q);
+				//spi_out_shadow_update();
 				//IMU_Write(val,val,val);
 				//RPUs_Write(encoders,forces);
 				//SlidersRead(keys);
@@ -309,6 +367,7 @@ int main(void)
 				readSensors();
 				makeUdpPacket();
 				sendUdpPacket();
+				sendGuiData();
 			}
 		}
 		else
@@ -316,6 +375,15 @@ int main(void)
 			if (UDP_TFLAG==1)
 			{
 				UDP_TFLAG=0;
+				if(uart_telemtry_loop_delay>10)
+				{
+					uart_telemtry_loop_delay=0;
+					sendUartTelemtry(); //Data For the GUI
+				}
+				else
+				{
+					uart_telemtry_loop_delay++;
+				}
 				if(loop_delay_counter>=0)
 				{
 					loop_delay_counter=0;
@@ -329,6 +397,8 @@ int main(void)
 					//IMU_Write(val,val,val);
 					//RPUs_Write(encoders,forces);
 					//SlidersRead(keys);
+						spi_out_shadow_update();
+
 					
 					//ledStateMachine();
 					//poweSwitchStateMachine();
@@ -336,6 +406,7 @@ int main(void)
 					readSensors();
 					makeUdpPacket();
 					sendUdpPacket();
+					sendGuiData();
 					
 				}
 				else
@@ -402,9 +473,11 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USART3|RCC_PERIPHCLK_UART5;
+  PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USART3|RCC_PERIPHCLK_UART5
+                              |RCC_PERIPHCLK_UART7;
   PeriphClkInitStruct.Usart3ClockSelection = RCC_USART3CLKSOURCE_PCLK1;
   PeriphClkInitStruct.Uart5ClockSelection = RCC_UART5CLKSOURCE_PCLK1;
+  PeriphClkInitStruct.Uart7ClockSelection = RCC_UART7CLKSOURCE_PCLK1;
   if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct) != HAL_OK)
   {
     Error_Handler();
@@ -740,7 +813,7 @@ static void MX_TIM14_Init(void)
 
   /* USER CODE END TIM14_Init 1 */
   htim14.Instance = TIM14;
-  htim14.Init.Prescaler = 9999;
+  htim14.Init.Prescaler = 999;
   htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim14.Init.Period = 107;
   htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
@@ -791,6 +864,41 @@ static void MX_UART5_Init(void)
 }
 
 /**
+  * @brief UART7 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_UART7_Init(void)
+{
+
+  /* USER CODE BEGIN UART7_Init 0 */
+
+  /* USER CODE END UART7_Init 0 */
+
+  /* USER CODE BEGIN UART7_Init 1 */
+
+  /* USER CODE END UART7_Init 1 */
+  huart7.Instance = UART7;
+  huart7.Init.BaudRate = 115200;
+  huart7.Init.WordLength = UART_WORDLENGTH_8B;
+  huart7.Init.StopBits = UART_STOPBITS_1;
+  huart7.Init.Parity = UART_PARITY_NONE;
+  huart7.Init.Mode = UART_MODE_TX_RX;
+  huart7.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart7.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart7.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart7.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart7) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN UART7_Init 2 */
+
+  /* USER CODE END UART7_Init 2 */
+
+}
+
+/**
   * @brief USART3 Initialization Function
   * @param None
   * @retval None
@@ -832,8 +940,18 @@ static void MX_DMA_Init(void)
 {
   /* DMA controller clock enable */
   __HAL_RCC_DMA2_CLK_ENABLE();
+  __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Stream1_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream1_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream1_IRQn);
+  /* DMA1_Stream3_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream3_IRQn);
+  /* DMA1_Stream7_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Stream7_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Stream7_IRQn);
   /* DMA2_Stream0_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
@@ -909,17 +1027,17 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : RPI_PW_STAT_Pin Power_Key_Pin */
-  GPIO_InitStruct.Pin = RPI_PW_STAT_Pin|Power_Key_Pin;
+  /*Configure GPIO pin : Power_Key_Pin */
+  GPIO_InitStruct.Pin = Power_Key_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
-  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+  HAL_GPIO_Init(Power_Key_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_4;
+  /*Configure GPIO pin : SPI1_NSS_Pin */
+  GPIO_InitStruct.Pin = SPI1_NSS_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(SPI1_NSS_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LD1_Pin LD3_Pin LD2_Pin BL_EN_Pin */
   GPIO_InitStruct.Pin = LD1_Pin|LD3_Pin|LD2_Pin|BL_EN_Pin;
@@ -990,12 +1108,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 		SYNC_IN_FLAG=1;
 		IMU_Tick();
 	}
+	if(GPIO_Pin==SPI1_NSS_Pin)	//GUI System transaction start
+	{
+		//spi_stack_CS_Mng(&hspi1);//The SPI Slave subsystem for telemetry to the GUI System is faulty and needs further work
+	}
 	
 }
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
 	can_stack_interrupt_rutine(hcan);
+}
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart){
+	__NOP();
 }
 /* USER CODE END 4 */
 

@@ -129,8 +129,6 @@ void CC_Interrupt_rutine(uint16_t GPIO_Pin)
 		case CC4_IRQ_Pin:
 				initiate_transaction(3);
 				break;
-		case(GPIO_PIN_4): //RPI_CS
-		break;
 	}
 }
 

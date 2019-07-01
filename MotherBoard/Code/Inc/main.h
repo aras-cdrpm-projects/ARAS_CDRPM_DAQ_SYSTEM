@@ -92,8 +92,6 @@ void Error_Handler(void);
 #define USER_Btn_EXTI_IRQn EXTI15_10_IRQn
 #define CS4_Pin GPIO_PIN_4
 #define CS4_GPIO_Port GPIOF
-#define RPI_PW_STAT_Pin GPIO_PIN_7
-#define RPI_PW_STAT_GPIO_Port GPIOF
 #define Power_Key_Pin GPIO_PIN_9
 #define Power_Key_GPIO_Port GPIOF
 #define MCO_Pin GPIO_PIN_0
@@ -104,6 +102,9 @@ void Error_Handler(void);
 #define RMII_REF_CLK_GPIO_Port GPIOA
 #define RMII_MDIO_Pin GPIO_PIN_2
 #define RMII_MDIO_GPIO_Port GPIOA
+#define SPI1_NSS_Pin GPIO_PIN_4
+#define SPI1_NSS_GPIO_Port GPIOA
+#define SPI1_NSS_EXTI_IRQn EXTI4_IRQn
 #define RMII_CRS_DV_Pin GPIO_PIN_7
 #define RMII_CRS_DV_GPIO_Port GPIOA
 #define RMII_RXD0_Pin GPIO_PIN_4

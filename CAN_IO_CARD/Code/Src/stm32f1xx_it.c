@@ -86,7 +86,6 @@ extern	int LED_BeatFlag;
 extern CAN_HandleTypeDef hcan;
 extern DMA_HandleTypeDef hdma_spi1_rx;
 extern DMA_HandleTypeDef hdma_spi1_tx;
-extern SPI_HandleTypeDef hspi1;
 extern TIM_HandleTypeDef htim4;
 /* USER CODE BEGIN EV */
 int LED_OFF_DELAY=100;
@@ -413,43 +412,6 @@ void TIM4_IRQHandler(void)
   /* USER CODE BEGIN TIM4_IRQn 1 */
 
   /* USER CODE END TIM4_IRQn 1 */
-}
-
-/**
-  * @brief This function handles SPI1 global interrupt.
-  */
-void SPI1_IRQHandler(void)
-{
-  /* USER CODE BEGIN SPI1_IRQn 0 */
-	
-	
-	/*
-	uint8_t data;
-	data= (uint8_t)hspi1.Instance->DR;
-		if(spiByteCounter==0) //Is it the first Byte? If yes, Exteract the Address and RW cmd
-		{
-				address=data&0x7f;
-				R_W = (data>>7)&0x1;
-			if(R_W==1)	//If Read command is issued, the first byte of the regs should be loaded into the DR Reg to be transmitted
-				hspi1.Instance->DR=regs[address];
-		}else if(R_W==1)
-		{
-					hspi1.Instance->DR=regs[address]; //If write cmd is asserted, Save the bytes following the first command and RW byte.
-		}else
-		{
-				  regs[address-1]=data;
-		}
-		address++;
-		spiByteCounter++; // Remember Remember! comment out the HAL_SPI_IRQHandler(&hspi1); line.
-		*/
-	
-	
-	
-  /* USER CODE END SPI1_IRQn 0 */
-  HAL_SPI_IRQHandler(&hspi1);
-  /* USER CODE BEGIN SPI1_IRQn 1 */
-
-  /* USER CODE END SPI1_IRQn 1 */
 }
 
 /* USER CODE BEGIN 1 */

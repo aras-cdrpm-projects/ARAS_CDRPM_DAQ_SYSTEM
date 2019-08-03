@@ -335,7 +335,8 @@ void EXTI9_5_IRQHandler(void)
 void TIM4_IRQHandler(void)
 {
   /* USER CODE BEGIN TIM4_IRQn 0 */
-		if(htim4.Instance->CNT==0)
+		
+		if(htim4.Instance->CNT<500)
 		{
 			nob_encoder_index++;
 		}

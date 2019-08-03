@@ -263,6 +263,7 @@ void sendGuiData(void)
 		guiPacket.Data.header1='a';
 		guiPacket.Data.header2='b';
 		memcpy(&guiPacket.buff[2],outPacket.buff,sizeof(outPacket.buff));
+		guiPacket.Data.force[0]=nob_encoder_read();
 		HAL_UART_Transmit_DMA(&huart7,guiPacket.buff,sizeof(guiPacket.buff));
 	}
 }

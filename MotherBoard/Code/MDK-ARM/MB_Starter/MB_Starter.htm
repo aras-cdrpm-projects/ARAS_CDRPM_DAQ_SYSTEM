@@ -3,7 +3,7 @@
 <title>Static Call Graph - [MB_Starter\MB_Starter.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image MB_Starter\MB_Starter.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060422: Last Updated: Mon Jul 01 14:06:10 2019
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060422: Last Updated: Tue Jul 02 13:45:46 2019
 <BR><P>
 <H3>Maximum Stack Usage =        552 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -1441,7 +1441,7 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f746xx.o(.text)
 </UL>
-<P><STRONG><a name="[28]"></a>TIM4_IRQHandler</STRONG> (Thumb, 28 bytes, Stack size 0 bytes, stm32f7xx_it.o(i.TIM4_IRQHandler))
+<P><STRONG><a name="[28]"></a>TIM4_IRQHandler</STRONG> (Thumb, 30 bytes, Stack size 0 bytes, stm32f7xx_it.o(i.TIM4_IRQHandler))
 <BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = TIM4_IRQHandler &rArr; HAL_TIM_IRQHandler
 </UL>
 <BR>[Calls]<UL><LI><a href="#[ca]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_TIM_IRQHandler
@@ -2143,7 +2143,8 @@ Global Symbols
 </UL>
 
 <P><STRONG><a name="[164]"></a>nob_encoder_read</STRONG> (Thumb, 22 bytes, Stack size 0 bytes, stm32f7xx_it.o(i.nob_encoder_read))
-<BR><BR>[Called By]<UL><LI><a href="#[160]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;makeUdpPacket
+<BR><BR>[Called By]<UL><LI><a href="#[162]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sendGuiData
+<LI><a href="#[160]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;makeUdpPacket
 </UL>
 
 <P><STRONG><a name="[15b]"></a>nob_encoder_reset</STRONG> (Thumb, 32 bytes, Stack size 0 bytes, stm32f7xx_it.o(i.nob_encoder_reset))
@@ -2353,10 +2354,11 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[160]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;makeUdpPacket
 </UL>
 
-<P><STRONG><a name="[162]"></a>sendGuiData</STRONG> (Thumb, 54 bytes, Stack size 8 bytes, main.o(i.sendGuiData))
+<P><STRONG><a name="[162]"></a>sendGuiData</STRONG> (Thumb, 60 bytes, Stack size 8 bytes, main.o(i.sendGuiData))
 <BR><BR>[Stack]<UL><LI>Max Depth = 60<LI>Call Chain = sendGuiData &rArr; HAL_UART_Transmit_DMA &rArr; HAL_DMA_Start_IT &rArr; DMA_SetConfig
 </UL>
-<BR>[Calls]<UL><LI><a href="#[ec]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_Transmit_DMA
+<BR>[Calls]<UL><LI><a href="#[164]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;nob_encoder_read
+<LI><a href="#[ec]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_UART_Transmit_DMA
 <LI><a href="#[117]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_memcpy
 </UL>
 <BR>[Called By]<UL><LI><a href="#[6b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;main

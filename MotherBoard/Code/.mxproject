@@ -1,7 +1,7 @@
 [PreviousGenFiles]
-HeaderPath=C:/Users/Asus/Desktop/Temp_project/DAQ_Projects/ARAS_CDRPM_DAQ_SYSTEM/MotherBoard/Code/Inc
+HeaderPath=D:/Temp_project/DAQ_Projects/ARAS_CDRPM_DAQ_SYSTEM/MotherBoard/Code/Inc
 HeaderFiles=stm32f7xx_it.h;stm32f7xx_hal_conf.h;main.h;lwip.h;lwipopts.h;ethernetif.h;
-SourcePath=C:/Users/Asus/Desktop/Temp_project/DAQ_Projects/ARAS_CDRPM_DAQ_SYSTEM/MotherBoard/Code/Src
+SourcePath=D:/Temp_project/DAQ_Projects/ARAS_CDRPM_DAQ_SYSTEM/MotherBoard/Code/Src
 SourceFiles=stm32f7xx_it.c;stm32f7xx_hal_msp.c;main.c;lwip.c;ethernetif.c;
 
 [PreviousLibFiles]

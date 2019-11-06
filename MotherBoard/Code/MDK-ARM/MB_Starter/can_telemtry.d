@@ -38,3 +38,4 @@ mb_starter\can_telemtry.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_tim
 mb_starter\can_telemtry.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart.h
 mb_starter\can_telemtry.o: ../Drivers/STM32F7xx_HAL_Driver/Inc/stm32f7xx_hal_uart_ex.h
 mb_starter\can_telemtry.o: D:\Programs Install\keil\ARM\ARMCC\Bin\..\include\string.h
+mb_starter\can_telemtry.o: ..\MDK-ARM\CAN_CARD.h

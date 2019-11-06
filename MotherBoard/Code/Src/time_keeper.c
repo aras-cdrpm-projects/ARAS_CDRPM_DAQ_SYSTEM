@@ -1,6 +1,6 @@
 #include "stm32f7xx_hal.h"
 
-uint64_t tick=0,rpu_tick=0,camera_tick=0,imu_tick=0;
+volatile uint32_t tick=0,rpu_tick=0,camera_tick=0,imu_tick=0;
 uint32_t tick_index=0;
 TIM_HandleTypeDef *timer;
 void  timeManagerInit(TIM_HandleTypeDef *tmr)

@@ -1,5 +1,7 @@
 #include "main.h"
 #include "string.h"
+#include "CAN_CARD.h"
+
 #define ACCELEROMETER_ID 0x01
 #define GYROSCOPE_ID		 0X02
 #define MAGNETOMETER_ID	 0X03
@@ -9,6 +11,8 @@
 //#define CAN_DEBUG_ENABLE
 extern UART_HandleTypeDef huart5;
 extern char str[32];
+volatile int IMU_RX_FLAG=0;
+
 union{
 	struct{
 		int16_t a;
@@ -69,6 +73,8 @@ void can_stack_interrupt_rutine(CAN_HandleTypeDef *hcan)
 	switch(TelRMess.StdId)
 	{
 		case ACCELEROMETER_ID:
+			IMU_Tick();
+			sensorStartConversion(); //Initiate the conversion as soon as the first portion of IMU packet is received
 			memcpy((uint8_t*)IMU_Mess.buffer,canData,TelRMess.DLC);
 			accel[0]=IMU_Mess.Data.a;
 			accel[1]=IMU_Mess.Data.b;
@@ -89,6 +95,7 @@ void can_stack_interrupt_rutine(CAN_HandleTypeDef *hcan)
 			magnetometer[0]=IMU_Mess.Data.a;
 			magnetometer[1]=IMU_Mess.Data.b;
 			magnetometer[2]=IMU_Mess.Data.c;
+		  IMU_RX_FLAG=1; // Let the main loop know that the data is ready to be transmitted
 			break;
 		case BAROMETER_ID:
 			memcpy((uint8_t*)Barometer_Mess.buffer,canData,TelRMess.DLC);

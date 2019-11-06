@@ -96,13 +96,15 @@ struct udp_pcb *UDP;
 ip_addr_t Remote_IP, Local_IP;
 extern volatile int RPI_SYNC;
 extern volatile int UDP_TFLAG;
-int SYNC_IN_FLAG =0;
+extern volatile int IMU_RX_FLAG;
+int SYNC_IN_FLAG =0,Start_Sampling=0;
 struct pbuf *Transmit_Pbuf;
 CAN_RxHeaderTypeDef RMess;
 CAN_TxHeaderTypeDef TMess;
 uint8_t  TxData[8] = {0};
 uint8_t  canRxData[8];
 uint32_t TxMailBox;
+
 HAL_StatusTypeDef canret;
 
 char str[32];
@@ -230,7 +232,7 @@ void makeUdpPacket(void)
 	//read the nobe encoder and store its data into the output packet
 	outPacket.Data.nob_encoder=nob_encoder_read();
 	//Get the time Stamps
-	outPacket.Data.RPU_TimeStamp=RPU_TimeStamp();
+	outPacket.Data.RPU_TimeStamp=0;//RPU_TimeStamp();
 	outPacket.Data.IMU_TimeStamp=IMU_TimeStamp();
 	outPacket.Data.CAM_TimeStamp=Camera_TimeStamp();
 }
@@ -251,8 +253,8 @@ void sendUartTelemtry(void)
 void readSensors()
 {
 	//RPUs start conversion
-	sensorStartConversion();
-	RPU_Tick();
+	//sensorStartConversion();
+	//RPU_Tick();
 }
 void sendGuiData(void)
 {
@@ -339,41 +341,11 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-	
+	Start_Sampling=1;
   while (1)
 	{
-		//HAL_CAN_AddTxMessage(&hcan1, &TMess, data, &TxMailBox);
-
-		//
-		if(HAL_GPIO_ReadPin(DAQ_SYNQ_MODE_GPIO_Port,DAQ_SYNQ_MODE_Pin)==SYNQ_MODE_SLAVE)
-		{
-			if(SYNC_IN_FLAG)
-			{
-				SYNC_IN_FLAG=0;
-				//readKeys(keys);
-				//q[0]=1;
-				//q[1]=2;
-			  //pos[0]=(float)0;
-				//pos[1]=(float)1.5;
-				//pos[2]=(float)2.5;
-				//IMP_Write(pos,q);
-				//spi_out_shadow_update();
-				//IMU_Write(val,val,val);
-				//RPUs_Write(encoders,forces);
-				//SlidersRead(keys);
-				
-				//ledStateMachine();
-				//poweSwitchStateMachine();
-				//dacSend(vals);
-				readSensors();
-				makeUdpPacket();
-				sendUdpPacket();
-				sendGuiData();
-			}
-		}
-		else
-		{
-			if (UDP_TFLAG==1)
+			// Transmit the data to the GUI computer
+			if(UDP_TFLAG==1)
 			{
 				UDP_TFLAG=0;
 				if(uart_telemtry_loop_delay>10)
@@ -385,6 +357,10 @@ int main(void)
 				{
 					uart_telemtry_loop_delay++;
 				}
+			}
+			if (IMU_RX_FLAG==1) //on the reception of an IMU packet, we must send the results through UDP
+			{
+				IMU_RX_FLAG=0;
 				if(loop_delay_counter>=0)
 				{
 					loop_delay_counter=0;
@@ -398,23 +374,18 @@ int main(void)
 					//IMU_Write(val,val,val);
 					//RPUs_Write(encoders,forces);
 					//SlidersRead(keys);
-						spi_out_shadow_update();
-
-					
+				  //spi_out_shadow_update();
 					//ledStateMachine();
 					//poweSwitchStateMachine();
 					//dacSend(vals);
-					readSensors();
 					makeUdpPacket();
 					sendUdpPacket();
 					sendGuiData();
-					
 				}
 				else
 				{
 					loop_delay_counter++;
 				}
-			}
 			}
 			MX_LWIP_Process();
     /* USER CODE END WHILE */
@@ -1004,7 +975,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : DAQ_SYNC_IN_Pin */
   GPIO_InitStruct.Pin = DAQ_SYNC_IN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(DAQ_SYNC_IN_GPIO_Port, &GPIO_InitStruct);
 
@@ -1106,14 +1077,19 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
 	if(GPIO_Pin==DAQ_SYNC_IN_Pin) //The sync interrupt is asserted, this signal comes from the IMU thus, the IMU timestamp 
 																//should be recorded
 	{
-		SYNC_IN_FLAG=1;
-		IMU_Tick();
+		//SYNC_IN_FLAG=1;
+		//IMU_Tick();
+		if (Start_Sampling)
+			Camera_Tick();
 	}
 	if(GPIO_Pin==SPI1_NSS_Pin)	//GUI System transaction start
 	{
 		//spi_stack_CS_Mng(&hspi1);//The SPI Slave subsystem for telemetry to the GUI System is faulty and needs further work
 	}
-	
+	if(GPIO_Pin==GPIO_PIN_11)	//GUI System transaction start
+	{
+		//spi_stack_CS_Mng(&hspi1);//The SPI Slave subsystem for telemetry to the GUI System is faulty and needs further work
+	}
 }
 
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)

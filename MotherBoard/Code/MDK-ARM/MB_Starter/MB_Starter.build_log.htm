@@ -22,25 +22,21 @@ Dialog DLL:      TCM.DLL V1.27.0.0
  
 <h2>Project:</h2>
 D:\Temp_project\DAQ_Projects\ARAS_CDRPM_DAQ_SYSTEM\MotherBoard\Code\MDK-ARM\MB_Starter.uvprojx
-Project File Date:  08/18/2019
+Project File Date:  11/06/2019
 
 <h2>Output:</h2>
 *** Using Compiler 'V5.06 update 4 (build 422)', folder: 'D:\Programs Install\keil\ARM\ARMCC\Bin'
 Build target 'MB_Starter'
-compiling main.c...
-../Src/main.c(368): warning:  #188-D: enumerated type mixed with another type
-  														!HAL_GPIO_ReadPin(
-AQ_SYNC_OUT_GPIO_Port,
-AQ_SYNC_OUT_Pin)); //Toggle the Sync output
-../Src/main.c(338): warning:  #177-D: variable "q"  was declared but never referenced
-  	float q[4];
-../Src/main.c(339): warning:  #177-D: variable "pos"  was declared but never referenced
-  	float pos[3];
-../Src/main.c: 3 warnings, 0 errors
+compiling CAN_Telemtry.c...
+..\Src\CAN_Telemtry.c(78): warning:  #223-D: function "IMU_Tick" declared implicitly
+  			IMU_Tick();
+..\Src\CAN_Telemtry.c(111): warning:  #1-D: last line of file ends without a newline
+  }
+..\Src\CAN_Telemtry.c: 2 warnings, 0 errors
 linking...
-Program Size: Code=49828 RO-data=1064 RW-data=304 ZI-data=30936  
+Program Size: Code=49832 RO-data=1064 RW-data=312 ZI-data=30936  
 FromELF: creating hex file...
-"MB_Starter\MB_Starter.axf" - 0 Error(s), 3 Warning(s).
+"MB_Starter\MB_Starter.axf" - 0 Error(s), 2 Warning(s).
 
 <h2>Software Packages used:</h2>
 
@@ -58,7 +54,7 @@ Package Vendor: ARM
 <h2>Collection of Component Files used:</h2>
 
    * Component: ARM::CMSIS:CORE:5.0.2
-Build Time Elapsed:  00:00:03
+Build Time Elapsed:  00:00:08
 </pre>
 </body>
 </html>

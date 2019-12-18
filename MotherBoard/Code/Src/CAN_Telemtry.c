@@ -10,6 +10,7 @@
 
 //#define CAN_DEBUG_ENABLE
 extern UART_HandleTypeDef huart5;
+extern int syncTogglingFlag;
 extern char str[32];
 volatile int IMU_RX_FLAG=0;
 
@@ -18,6 +19,7 @@ union{
 		int16_t a;
 		int16_t b;
 		int16_t c;
+		int16_t tmp;
 	}Data;
 	uint8_t buffer[6];
 }IMU_Mess;
@@ -79,6 +81,10 @@ void can_stack_interrupt_rutine(CAN_HandleTypeDef *hcan)
 			accel[0]=IMU_Mess.Data.a;
 			accel[1]=IMU_Mess.Data.b;
 			accel[2]=IMU_Mess.Data.c;
+			syncTogglingFlag=IMU_Mess.Data.tmp;		
+			if(syncTogglingFlag==1)
+				accel[2]=IMU_Mess.Data.c;
+
 			#ifdef CAN_DEBUG_ENABLE
 				sprintf(str,"RPUs Status are =%x \r\n",accel[0]);
 				HAL_UART_Transmit(&huart5,(uint8_t *)str,strlen(str),100);

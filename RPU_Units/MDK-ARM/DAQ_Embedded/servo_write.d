@@ -7,7 +7,7 @@ daq_embedded\servo_write.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_de
 daq_embedded\servo_write.o: ../Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f4xx.h
 daq_embedded\servo_write.o: ../Drivers/CMSIS/Device/ST/STM32F4xx/Include/stm32f407xx.h
 daq_embedded\servo_write.o: ../Drivers/CMSIS/Include/core_cm4.h
-daq_embedded\servo_write.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
+daq_embedded\servo_write.o: D:\Programs Install\keil\ARM\ARMCC\Bin\..\include\stdint.h
 daq_embedded\servo_write.o: ../Drivers/CMSIS/Include/core_cmInstr.h
 daq_embedded\servo_write.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
 daq_embedded\servo_write.o: ../Drivers/CMSIS/Include/core_cmFunc.h
@@ -15,7 +15,7 @@ daq_embedded\servo_write.o: ../Drivers/CMSIS/Include/core_cmSimd.h
 daq_embedded\servo_write.o: ../Drivers/CMSIS/Device/ST/STM32F4xx/Include/system_stm32f4xx.h
 daq_embedded\servo_write.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h
 daq_embedded\servo_write.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy/stm32_hal_legacy.h
-daq_embedded\servo_write.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+daq_embedded\servo_write.o: D:\Programs Install\keil\ARM\ARMCC\Bin\..\include\stdio.h
 daq_embedded\servo_write.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc_ex.h
 daq_embedded\servo_write.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_gpio.h
 daq_embedded\servo_write.o: ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_gpio_ex.h

@@ -94,6 +94,7 @@ static void MX_TIM3_Init(void);
 /* USER CODE BEGIN 0 */
 extern float Value;
 int16_t enc_read();
+double encoder_val=0;
 
 CAN_RxHeaderTypeDef RMess;
 CAN_TxHeaderTypeDef TMess;
@@ -161,6 +162,7 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 	HAL_TIM_Base_Start_IT(&htim13);
+	HAL_TIM_Base_Start_IT(&htim3);
 	int cnt=0;
 	char str[32];
 	HAL_DAC_Start(&hdac,DAC_CHANNEL_1);
@@ -179,6 +181,8 @@ int main(void)
 		//HAL_Delay(1);
 		//servoWrite(-4095);
     /* USER CODE END WHILE */
+		encoder_val=enc_read();
+
 		if(HAL_GetTick()-lastRX>50){
 			servoWrite(0);
   		HAL_GPIO_WritePin(GPIOB,GPIO_PIN_5,GPIO_PIN_RESET);

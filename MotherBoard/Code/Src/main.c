@@ -97,6 +97,7 @@ ip_addr_t Remote_IP, Local_IP;
 extern volatile int RPI_SYNC;
 extern volatile int UDP_TFLAG;
 extern volatile int IMU_RX_FLAG;
+int syncTogglingFlag=0;
 int SYNC_IN_FLAG =0,Start_Sampling=0;
 struct pbuf *Transmit_Pbuf;
 CAN_RxHeaderTypeDef RMess;
@@ -233,8 +234,8 @@ void makeUdpPacket(void)
 	outPacket.Data.nob_encoder=nob_encoder_read();
 	//Get the time Stamps
 	outPacket.Data.RPU_TimeStamp=0;//RPU_TimeStamp();
-	outPacket.Data.IMU_TimeStamp=IMU_TimeStamp();
-	outPacket.Data.CAM_TimeStamp=Camera_TimeStamp();
+	outPacket.Data.IMU_TimeStamp=0;
+	outPacket.Data.CAM_TimeStamp=syncTogglingFlag;
 }
 
 void sendUdpPacket(void)
